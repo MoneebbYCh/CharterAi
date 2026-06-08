@@ -1,9 +1,10 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { FormData } from '../types/form'
-import { GATE_REQUIREMENTS } from '../data/formDefaults'
+import { DEFINITION_OF_READY } from '../data/formDefaults'
 import { OPTION_DEFAULTS } from '../data/optionDefaults'
 import { getGateStatus } from './validation'
+import { getVscodeApi } from './vscodeApi'
 
 /* ── Layout (A4, mm) ─────────────────────────────────────────────── */
 const PAGE_W = 210
@@ -39,17 +40,6 @@ interface SectionEntry {
   page: number
 }
 
-const TECHNIQUE_LABELS: Record<keyof FormData['section4']['techniques'], string> = {
-  structuredInterview: 'Structured Interview (1-on-1 with key stakeholder)',
-  workshop: 'Workshop / Focus Group (multiple stakeholders)',
-  fiveWhys: '5 Whys Root Cause Analysis',
-  jtbd: 'Jobs-to-be-Done (JTBD) Mapping',
-  assumptionMapping: 'Assumption Mapping / Pre-mortem',
-  processWalkthrough: 'Process / Journey Walkthrough',
-  documentAnalysis: 'Document Analysis (existing specs, reports)',
-  observation: 'Observation (shadowing the current workflow)',
-}
-
 const AI_WORK_LABELS: Record<keyof FormData['section5']['aiWorkTypes'], string> = {
   promptEngineering: 'Prompt Engineering / Prompt Chains',
   fineTuning: 'Fine-tuning an Existing Model',
@@ -81,15 +71,6 @@ const DEFINITION_OF_DONE_LABELS: Record<keyof FormData['section3']['definitionOf
   documentationHandover: 'Documentation handed over (architecture, runbook, API spec)',
 }
 
-const CONFIDENCE_LABELS: Record<keyof FormData['section5']['confidenceHandling'], string> = {
-  confidenceScore: 'Return a confidence score with every prediction',
-  lowConfidenceReview: 'Route low-confidence outputs to human review',
-  lowConfidenceReject: 'Reject / withhold low-confidence outputs',
-  allLogged: 'Log all predictions for audit and retraining',
-  userFeedback: 'Collect user feedback on outputs (thumbs up/down)',
-  autoApproved: 'Outputs above a threshold are auto-approved',
-}
-
 function dash(value: string | undefined | null): string {
   const trimmed = (value ?? '').trim()
   return trimmed.length > 0 ? trimmed : '—'
@@ -107,7 +88,7 @@ function choiceLabel(
 function gateDecisionLabel(decision: FormData['section8']['gateDecision']): string {
   switch (decision) {
     case 'approved':
-      return 'APPROVED — Proceed to System Design'
+      return 'APPROVED — Proceed to PRD Creation'
     case 'needs-revision':
       return 'NEEDS REVISION — Return with comments'
     case 'rejected':
@@ -180,15 +161,6 @@ class CharterPdfBuilder {
     this.finalizeToc()
     this.applyRunningHeadersFooters()
     return this.doc
-  }
-
-  save(): void {
-    const doc = this.build()
-    const name = this.data.section1.projectName
-    const filename = name
-      ? `Project-Charter-${name.replace(/[^a-z0-9]/gi, '-').slice(0, 48)}.pdf`
-      : 'Project-Charter.pdf'
-    doc.save(filename)
   }
 
   /* ── Page flow ─────────────────────────────────────────────────── */
@@ -268,7 +240,7 @@ class CharterPdfBuilder {
     this.doc.setFont(FONT_SANS, 'normal')
     this.doc.setFontSize(9)
     this.doc.setTextColor(...MUTED)
-    this.doc.text('PRE-SYSTEM DESIGN PHASE', MARGIN, 40)
+    this.doc.text('PHASE 1 — PROJECT CHARTER', MARGIN, 40)
 
     this.doc.setFont(FONT_SANS, 'bold')
     this.doc.setFontSize(22)
@@ -278,7 +250,7 @@ class CharterPdfBuilder {
     this.doc.setFont(FONT_BODY, 'normal')
     this.doc.setFontSize(12)
     this.doc.setTextColor(...MUTED)
-    this.doc.text('Requirements Gathering, Elicitation & Definition-of-Ready Gate Review', MARGIN, 67)
+    this.doc.text('Project Definition · Stakeholder Alignment · Readiness Gate', MARGIN, 67)
 
     this.doc.setLineWidth(0.3)
     this.doc.line(MARGIN, 73, MARGIN + CONTENT_W, 73)
@@ -302,8 +274,11 @@ class CharterPdfBuilder {
         ['Submitted By', dash(s1.submittedBy)],
         ['Date Submitted', formatDate(s1.dateSubmitted)],
         ['AI Team Lead', dash(s1.aiTeamLead)],
+        ['Sponsor / Decision Maker', dash(s1.sponsorDecisionMaker)],
+        ['Budget Estimate', dash(s1.budgetEstimate)],
         ['Priority Classification', dash(s1.priority)],
         ['Project Type', choiceLabel('projectType', s1.projectType)],
+        ['Includes AI/ML Work', s1.includesAiWork ? 'Yes' : 'No'],
         ['Target Start', formatDate(s1.targetStartDate)],
         ['Requested Delivery', formatDate(s1.requestedDeliveryDate)],
         ['Gate Status', gate.toUpperCase()],
@@ -466,7 +441,7 @@ class CharterPdfBuilder {
 
   private buildSection1(): void {
     const s = this.data.section1
-    this.beginSection('1', 'Project Identity & Classification')
+    this.beginSection('1', 'Project Identity & Initiation')
     this.beginSubsection('1.1', 'Basic Information')
     this.fieldTable([
       { label: 'Project Name', value: s.projectName },
@@ -477,9 +452,19 @@ class CharterPdfBuilder {
       { label: 'Target Start Date', value: formatDate(s.targetStartDate) },
       { label: 'Requested Delivery Date', value: formatDate(s.requestedDeliveryDate) },
     ])
-    this.beginSubsection('1.2', 'Project Type')
-    this.fieldTable([{ label: 'Classification', value: choiceLabel('projectType', s.projectType) }])
-    this.beginSubsection('1.3', 'Priority Classification')
+    this.beginSubsection('1.2', 'Project Type & AI Scope')
+    this.fieldTable([
+      { label: 'Classification', value: choiceLabel('projectType', s.projectType) },
+      { label: 'Includes AI/ML Work', value: s.includesAiWork ? 'Yes' : 'No' },
+    ])
+    this.beginSubsection('1.3', 'Budget & Resourcing')
+    this.fieldTable([
+      { label: 'Budget Estimate / Cost Range', value: s.budgetEstimate },
+      { label: 'Team / Skills Required', value: s.teamSkillsRequired },
+      { label: 'Sponsor / Decision Maker', value: s.sponsorDecisionMaker },
+      { label: 'Key Milestones / Timeline', value: s.keyMilestones },
+    ])
+    this.beginSubsection('1.4', 'Priority Classification')
     this.fieldTable([
       { label: 'Priority', value: choiceLabel('priority', s.priority) },
       { label: 'Priority Justification', value: s.priorityJustification },
@@ -513,7 +498,7 @@ class CharterPdfBuilder {
       { label: 'Target Value', value: s.targetValue },
       { label: 'Measurement Method', value: s.measurementMethod },
     ])
-    this.beginSubsection('3.2', 'AI Model Performance Thresholds')
+    this.beginSubsection('3.2', 'Performance Metrics & Thresholds')
     this.dataTable(
       ['Metric', 'Minimum Threshold', 'Target', 'Measurement Method'],
       s.performanceMetrics.map((r) => [
@@ -541,23 +526,18 @@ class CharterPdfBuilder {
 
   private buildSection4(): void {
     const s = this.data.section4
-    this.beginSection('4', 'BABOK Elicitation & Stakeholder Alignment')
+    this.beginSection('4', 'Stakeholder Alignment & Discovery')
     this.beginSubsection('4.1', 'Stakeholder Register')
     this.dataTable(
       ['Name & Role', 'Interest (H/M/L)', 'Influence (H/M/L)', 'Key Concern / Need'],
       s.stakeholders.map((r) => [r.nameRole, r.interestLevel, r.influence, r.keyConcern]),
     )
-    this.beginSubsection('4.2', 'Elicitation Techniques Used')
-    this.dataTable(
-      ['Status', 'Technique'],
-      checklistRows(
-        Object.entries(TECHNIQUE_LABELS).map(([id, label]) => ({ id, label })),
-        s.techniques as unknown as Record<string, boolean>,
-      ),
-    )
-    this.beginSubsection('4.3', 'Elicitation Session Summary')
+    this.beginSubsection('4.2', 'Elicitation Session Summary')
     this.paragraph(s.elicitationSummary)
-    this.beginSubsection('4.4', 'Assumption Register')
+    if (s.artifactLinks.trim()) {
+      this.fieldTable([{ label: 'Artifact Links', value: s.artifactLinks }])
+    }
+    this.beginSubsection('4.3', 'Assumption Register')
     this.dataTable(
       ['Assumption', 'Classification', 'If Wrong — Impact'],
       s.assumptions.map((r) => [r.assumption, r.classification, r.ifWrongImpact]),
@@ -566,6 +546,7 @@ class CharterPdfBuilder {
 
   private buildSection5(): void {
     const s = this.data.section5
+    const requiresAi = this.data.section1.includesAiWork
     this.beginSection('5', 'AI-Specific Requirements')
     this.beginSubsection('5.1', 'Data Requirements')
     this.fieldTable([
@@ -583,16 +564,19 @@ class CharterPdfBuilder {
         s.dataReadiness as unknown as Record<string, boolean>,
       ),
     )
-    this.beginSubsection('5.3', 'AI Work Classification')
-    const selectedWork = booleanRows(AI_WORK_LABELS, s.aiWorkTypes)
-    this.dataTable(
-      ['Status', 'Work Type'],
-      selectedWork.length > 0 ? selectedWork : [['—', 'No work type selected']],
-    )
-    if (s.aiWorkTypes.other && s.aiWorkOther.trim()) {
-      this.fieldTable([{ label: 'Other (Specify)', value: s.aiWorkOther }])
+    if (requiresAi) {
+      this.beginSubsection('5.3', 'AI Work Classification')
+      const selectedWork = booleanRows(AI_WORK_LABELS, s.aiWorkTypes)
+      this.dataTable(
+        ['Status', 'Work Type'],
+        selectedWork.length > 0 ? selectedWork : [['—', 'No work type selected']],
+      )
+      if (s.aiWorkTypes.other && s.aiWorkOther.trim()) {
+        this.fieldTable([{ label: 'Other (Specify)', value: s.aiWorkOther }])
+      }
     }
-    this.beginSubsection('5.4', 'Technical & Deployment Constraints')
+    const techSubsection = requiresAi ? '5.4' : '5.3'
+    this.beginSubsection(techSubsection, 'Technical & Deployment Constraints')
     this.fieldTable([
       { label: 'Technology Stack Constraints', value: s.techStackConstraints },
       { label: 'Deployment Target', value: s.deploymentTarget },
@@ -602,21 +586,15 @@ class CharterPdfBuilder {
       { label: 'Uptime / SLA Requirement', value: s.uptimeSla },
       { label: 'Infrastructure Constraints', value: s.infrastructureConstraints },
     ])
-    this.beginSubsection('5.5', 'Failure Modes & Fallback Behaviour')
+    const fallbackSubsection = requiresAi ? '5.5' : '5.4'
+    this.beginSubsection(fallbackSubsection, 'Failure Modes & Fallback Behaviour')
     this.fieldTable([
       { label: 'Acceptable Error Rate', value: s.acceptableErrorRate },
       { label: 'When the Model is Wrong', value: s.whenModelWrong },
       { label: 'When the System is Unavailable', value: s.whenUnavailable },
     ])
-    this.beginSubsection('5.6', 'Confidence Handling')
-    this.dataTable(
-      ['Status', 'Handling Strategy'],
-      checklistRows(
-        Object.entries(CONFIDENCE_LABELS).map(([id, label]) => ({ id, label })),
-        s.confidenceHandling as unknown as Record<string, boolean>,
-      ),
-    )
-    this.beginSubsection('5.7', 'Bias, Fairness & Ethical Considerations')
+    const biasSubsection = requiresAi ? '5.6' : '5.5'
+    this.beginSubsection(biasSubsection, 'Bias, Fairness & Ethical Considerations')
     this.paragraph(s.biasFairness)
   }
 
@@ -634,6 +612,8 @@ class CharterPdfBuilder {
         { label: 'Client Approver', value: s.clientApprover },
         { label: 'Infrastructure & Access Dependencies', value: s.infrastructureDependencies },
         { label: 'Commercial Constraints', value: s.commercialConstraints },
+        { label: 'System / Service Dependencies', value: s.dependencies },
+        { label: 'Artifact Links', value: s.artifactLinks },
       ])
     } else if (this.data.section1.projectType === 'internal-product') {
       const s = this.data.section6B
@@ -644,6 +624,8 @@ class CharterPdfBuilder {
         { label: 'Internal Stakeholder / Decision Maker', value: s.internalStakeholder },
         { label: 'User Research or Evidence', value: s.userResearchEvidence },
         { label: 'Appetite', value: choiceLabel('appetite', s.appetite) },
+        { label: 'System / Service Dependencies', value: s.dependencies },
+        { label: 'Artifact Links', value: s.artifactLinks },
       ])
     } else {
       this.paragraph('Project type not selected — Section 6 not applicable.')
@@ -665,18 +647,7 @@ class CharterPdfBuilder {
       ['Risk / Assumption', 'Likelihood', 'Impact', 'Mitigation Strategy'],
       s.risks.map((r) => [r.risk, r.likelihood, r.impact, r.mitigation]),
     )
-    this.beginSubsection('7.3', 'RACI Matrix')
-    this.doc.setFont(FONT_BODY, 'italic')
-    this.doc.setFontSize(8.5)
-    this.doc.setTextColor(...MUTED)
-    this.ensureSpace(6)
-    this.doc.text('R = Responsible · A = Accountable · C = Consulted · I = Informed', MARGIN, this.y)
-    this.y += 5
-    this.dataTable(
-      ['Activity / Decision', 'AI Lead', 'AI Eng 1', 'AI Eng 2', 'Stakeholder'],
-      s.raci.map((r) => [r.activity, r.aiLead, r.aiEng1, r.aiEng2, r.stakeholder]),
-    )
-    this.beginSubsection('7.4', 'Open Questions & Unknowns')
+    this.beginSubsection('7.3', 'Open Questions & Unknowns')
     this.dataTable(
       ['Question / Unknown', 'Owner', 'Due Date', 'Status'],
       s.openQuestions.map((r) => [r.question, r.owner, formatDate(r.dueDate), r.status]),
@@ -686,22 +657,14 @@ class CharterPdfBuilder {
   private buildSection8(): void {
     const s = this.data.section8
     this.beginSection('8', 'Definition of Ready — Gate Review')
-    this.beginSubsection('8.1', 'Requirements Completeness')
-    this.checklistTable(GATE_REQUIREMENTS.requirementsCompleteness, s.requirementsCompleteness)
-    this.beginSubsection('8.2', 'AI Readiness')
-    this.checklistTable(GATE_REQUIREMENTS.aiReadiness, s.aiReadiness)
-    this.beginSubsection('8.3', 'Stakeholder Alignment')
-    this.checklistTable(GATE_REQUIREMENTS.stakeholderAlignment, s.stakeholderAlignment)
-    if (this.data.section1.projectType === 'client-services') {
-      this.beginSubsection('8.4', 'Commercial & Contractual')
-      this.checklistTable(GATE_REQUIREMENTS.commercialContractual, s.commercialContractual)
-    }
-    this.beginSubsection('8.5', 'Gate Decision')
+    this.beginSubsection('8.1', 'Definition of Ready')
+    this.checklistTable(DEFINITION_OF_READY, s.definitionOfReady)
+    this.beginSubsection('8.2', 'Gate Decision')
     this.fieldTable([
       { label: 'Decision', value: gateDecisionLabel(s.gateDecision) },
       { label: 'Gate Review Notes', value: s.gateReviewNotes },
     ])
-    this.beginSubsection('8.6', 'Authorisation & Signatures')
+    this.beginSubsection('8.3', 'Authorisation & Signatures')
     this.dataTable(
       ['Name', 'Role', 'Signature', 'Date'],
       s.signatures.map((r) => [r.name, r.role, r.signature, formatDate(r.date)]),
@@ -709,6 +672,24 @@ class CharterPdfBuilder {
   }
 }
 
-export function exportToPdf(data: FormData): void {
-  new CharterPdfBuilder(data).save()
+export function exportToPdf(data: FormData): ArrayBuffer {
+  const builder = new CharterPdfBuilder(data)
+  const doc = builder.build()
+  const blob = doc.output('arraybuffer')
+  const vscode = getVscodeApi()
+  if (vscode) {
+    vscode.postMessage({ type: 'exportPdf', phase: 'charter', buffer: blob })
+  }
+  return blob
+}
+
+export function exportPdfAs(data: FormData): ArrayBuffer {
+  const builder = new CharterPdfBuilder(data)
+  const doc = builder.build()
+  const blob = doc.output('arraybuffer')
+  const vscode = getVscodeApi()
+  if (vscode) {
+    vscode.postMessage({ type: 'exportPdfAs', phase: 'charter', buffer: blob })
+  }
+  return blob
 }

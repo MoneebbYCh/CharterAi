@@ -1,20 +1,63 @@
 {
   "name": "req-gath-sys",
+  "displayName": "Req-Gath-Sys Pipeline",
+  "description": "AI Project Requirements Gathering System — 6-phase pipeline with gate-based phase unlocking",
+  "version": "1.0.0",
+  "publisher": "ascen",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "vscode": "^1.96.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.cjs",
+  "contributes": {
+    "commands": [
+      {
+        "command": "req-gath-sys.openPipeline",
+        "title": "Req-Gath-Sys: Open Pipeline"
+      },
+      {
+        "command": "req-gath-sys.initializeWorkspace",
+        "title": "Req-Gath-Sys: Initialize Workspace"
+      },
+      {
+        "command": "req-gath-sys.indexCodebase",
+        "title": "Req-Gath-Sys: Index Codebase"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "req-gath-sys.openPipeline"
+        },
+        {
+          "command": "req-gath-sys.initializeWorkspace"
+        },
+        {
+          "command": "req-gath-sys.indexCodebase"
+        }
+      ]
+    }
+  },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build:webview": "vite build",
+    "build:extension": "esbuild extension/extension.ts --bundle --outfile=out/extension.cjs --external:vscode --format=cjs --platform=node --tsconfig=tsconfig.extension.json",
+    "build": "npm run build:extension && npm run build:webview",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "vscode:prepublish": "npm run build"
   },
   "dependencies": {
+    "@lubab/madar": "^0.27.9",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "react": "^19.2.6",
-    "react-dom": "^19.2.6",
-    "react-router-dom": "^7.16.0"
+    "react-dom": "^19.2.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -22,7 +65,9 @@
     "@types/node": "^24.12.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/vscode": "^1.120.0",
     "@vitejs/plugin-react": "^6.0.1",
+    "esbuild": "^0.25.12",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",

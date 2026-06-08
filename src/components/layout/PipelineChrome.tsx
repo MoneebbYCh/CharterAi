@@ -1,29 +1,29 @@
-import { Link, useLocation } from 'react-router-dom'
+import type { View } from '../../hooks/useViewState'
 import { PHASES } from '../../data/phases'
 import type { FormData } from '../../types/form'
 import type { GateStatus } from '../../utils/validation'
 import { isPhaseUnlocked } from '../../utils/validation'
 
 interface PipelineHeaderProps {
+  onHome: () => void
   onExport: () => void
   onSave: () => void
   saveLabel?: string
   formData?: FormData
 }
 
-export function PipelineHeader({ onExport, onSave, saveLabel = 'Save Draft', formData }: PipelineHeaderProps) {
-  const location = useLocation()
-
+export function PipelineHeader({ onHome, onExport, onSave, saveLabel = 'Save Draft', formData }: PipelineHeaderProps) {
   return (
-    <header className="fixed top-0 w-full z-50 flex flex-col border-b-2 border-on-background bg-secondary-container">
+    <header className="sticky top-0 w-full z-50 flex flex-col border-b-2 border-on-background bg-secondary-container">
       <div className="flex justify-between items-center px-6 py-2">
-        <Link
-          to="/"
+        <button
+          type="button"
+          onClick={onHome}
           className="font-bold text-lg tracking-tighter text-on-background hover:text-primary transition-colors"
           style={{ fontFamily: 'var(--font-headline)' }}
         >
           Project Pipeline
-        </Link>
+        </button>
         <div className="flex gap-4">
           <button
             type="button"
@@ -45,15 +45,12 @@ export function PipelineHeader({ onExport, onSave, saveLabel = 'Save Draft', for
       </div>
       <nav className="flex w-full overflow-x-auto">
         {PHASES.map((phase) => {
-          const isActive = location.pathname === phase.path
           const unlocked = isPhaseUnlocked(phase.id, formData ?? null)
-          const isLive = phase.active || unlocked
-
           if (!unlocked) {
             return (
               <span
                 key={phase.id}
-                title="Complete and approve the gate review in Pre-System Design first"
+                title="Complete and approve the gate review first"
                 className="flex-1 min-w-[140px] px-4 py-2 flex items-center justify-between border-r border-on-background bg-secondary-container text-on-secondary-container opacity-50 cursor-not-allowed"
               >
                 <span className="text-xs font-bold truncate" style={{ fontFamily: 'var(--font-label)' }}>
@@ -65,22 +62,15 @@ export function PipelineHeader({ onExport, onSave, saveLabel = 'Save Draft', for
           }
 
           return (
-            <Link
+            <span
               key={phase.id}
-              to={phase.path}
-              className={`flex-1 min-w-[140px] px-4 py-2 flex items-center justify-between border-r border-on-background transition-colors ${
-                isActive
-                  ? 'bg-on-background text-on-primary font-bold'
-                  : 'bg-secondary-container text-on-secondary-container opacity-80 hover:bg-primary hover:text-on-primary group'
-              }`}
+              className="flex-1 min-w-[140px] px-4 py-2 flex items-center justify-between border-r border-on-background bg-secondary-container text-on-secondary-container transition-colors"
             >
               <span className="text-xs font-bold truncate" style={{ fontFamily: 'var(--font-label)' }}>
                 {phase.title}
               </span>
-              <span className="material-symbols-outlined text-[16px]">
-                {isActive ? 'play_circle' : isLive ? 'radio_button_unchecked' : 'lock'}
-              </span>
-            </Link>
+              <span className="material-symbols-outlined text-[16px]">radio_button_unchecked</span>
+            </span>
           )
         })}
       </nav>
@@ -92,6 +82,7 @@ interface PipelineFooterProps {
   gateStatus: GateStatus
   onExportPdf: () => void
   onSignOff: () => void
+  onNavigate?: (view: View) => void
 }
 
 function gateFooterLabel(status: GateStatus): { text: string; className: string } {
@@ -109,11 +100,11 @@ function gateFooterLabel(status: GateStatus): { text: string; className: string 
   }
 }
 
-export function PipelineFooter({ gateStatus, onExportPdf, onSignOff }: PipelineFooterProps) {
+export function PipelineFooter({ gateStatus, onExportPdf, onSignOff, onNavigate }: PipelineFooterProps) {
   const gateLabel = gateFooterLabel(gateStatus)
 
   return (
-    <footer className="fixed bottom-0 w-full z-50 bg-surface-container-highest border-t-2 border-on-background flex justify-between items-center px-6 py-1">
+    <footer className="sticky bottom-0 w-full z-50 bg-surface-container-highest border-t-2 border-on-background flex justify-between items-center px-6 py-1">
       <div className="flex items-center gap-4">
         <span
           className="text-[11px] text-on-background font-bold uppercase tracking-wider"
@@ -130,14 +121,15 @@ export function PipelineFooter({ gateStatus, onExportPdf, onSignOff }: PipelineF
         </span>
       </div>
       <div className="flex gap-6 items-center">
-        {gateStatus === 'approved' && (
-          <Link
-            to="/prd"
-            className="text-[11px] text-on-primary bg-primary border-2 border-on-background font-bold px-3 py-0.5 no-underline outset-button"
+        {gateStatus === 'approved' && onNavigate && (
+          <button
+            type="button"
+            onClick={() => onNavigate({ page: 'prd', section: 'overview' })}
+            className="text-[11px] text-on-primary bg-primary border-2 border-on-background font-bold px-3 py-0.5 outset-button"
             style={{ fontFamily: 'var(--font-label)' }}
           >
             Proceed to PRD →
-          </Link>
+          </button>
         )}
         <button
           type="button"

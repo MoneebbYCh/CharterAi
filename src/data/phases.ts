@@ -10,12 +10,12 @@ export interface Phase {
 
 export const PHASES: Phase[] = [
   {
-    id: 'pre-system-design',
+    id: 'project-charter',
     number: 1,
-    title: 'Pre-System Design',
-    subtitle: 'Requirements & Project Charter',
-    description: 'Intake form, elicitation, gate review — must pass before design begins.',
-    path: '/pre-system-design',
+    title: 'Project Charter',
+    subtitle: 'Initiation & Discovery',
+    description: 'Project definition, stakeholder alignment, and readiness gate — must pass before design begins.',
+    path: '/project-charter',
     active: true,
   },
   {
@@ -25,7 +25,7 @@ export const PHASES: Phase[] = [
     subtitle: 'Product Requirements Document',
     description: 'Turn approved charter into a detailed PRD with scope, user stories, and specs.',
     path: '/prd',
-    active: false,
+    active: true,
   },
   {
     id: 'system-design',

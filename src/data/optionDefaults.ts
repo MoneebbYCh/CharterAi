@@ -30,6 +30,12 @@ export const OPTION_DEFAULTS = {
     { value: 'needs-revision', label: '🔄 NEEDS REVISION — Return with comments' },
     { value: 'rejected', label: '❌ REJECTED — Project not viable at this time' },
   ],
+  prdStatus: [
+    { value: 'draft', label: 'Draft — Work in progress' },
+    { value: 'in-review', label: 'In Review — Pending stakeholder approval' },
+    { value: 'approved', label: '✅ APPROVED — Proceed to System Design' },
+    { value: 'needs-revision', label: '🔄 Needs Revision — Return with comments' },
+  ],
 } as const
 
 export type OptionKey = keyof typeof OPTION_DEFAULTS
@@ -39,7 +45,7 @@ export function getDefaultStringOptions(key: 'hml' | 'raci' | 'assumptionClass' 
 }
 
 export function getDefaultChoiceOptions(
-  key: 'projectType' | 'priority' | 'roadmapStatus' | 'appetite' | 'gateDecision',
+  key: 'projectType' | 'priority' | 'roadmapStatus' | 'appetite' | 'gateDecision' | 'prdStatus',
 ): { value: string; label: string }[] {
   return OPTION_DEFAULTS[key].map((o) => ({ ...o }))
 }

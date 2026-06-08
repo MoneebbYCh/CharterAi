@@ -5,16 +5,8 @@ function isFilled(value: string): boolean {
   return value.trim().length > 0
 }
 
-function countTechniques(techniques: FormData['section4']['techniques']): number {
-  return Object.values(techniques).filter(Boolean).length
-}
-
 function hasTableRow(values: string[]): boolean {
   return values.some((v) => v.trim().length > 0)
-}
-
-export function isRaciFilled(raci: FormData['section7']['raci']): boolean {
-  return raci.some((row) => row.aiLead || row.aiEng1 || row.aiEng2 || row.stakeholder)
 }
 
 function hasCompleteTableRow<T extends object>(rows: T[], requiredKeys: (keyof T)[]): boolean {
@@ -40,8 +32,10 @@ export function validateSection1(data: FormData): SectionValidation {
   if (!s.projectType) missing.push('Project Type')
   if (!s.priority) missing.push('Priority Classification')
   if (!isFilled(s.priorityJustification)) missing.push('Priority Justification')
+  if (!isFilled(s.budgetEstimate)) missing.push('Budget Estimate')
+  if (!isFilled(s.sponsorDecisionMaker)) missing.push('Sponsor / Decision Maker')
 
-  const total = 6
+  const total = 8
   return { complete: missing.length === 0, total, filled: total - missing.length, missing }
 }
 
@@ -86,35 +80,32 @@ export function validateSection4(data: FormData): SectionValidation {
     missing.push('At least one complete stakeholder row (name, interest, and influence)')
   }
 
-  if (countTechniques(s.techniques) < 2) {
-    missing.push('At least two elicitation techniques')
-  }
-
   if (!isFilled(s.elicitationSummary)) missing.push('Elicitation Session Summary')
 
   if (!hasCompleteTableRow(s.assumptions, ['assumption', 'classification'])) {
     missing.push('At least one complete assumption row (assumption and classification)')
   }
 
-  const total = 4
+  const total = 3
   return { complete: missing.length === 0, total, filled: total - missing.length, missing }
 }
 
 export function validateSection5(data: FormData): SectionValidation {
   const missing: string[] = []
   const s = data.section5
+  const requiresAi = data.section1.includesAiWork
 
   if (!isFilled(s.dataRequired)) missing.push('Data Required')
   if (!isFilled(s.dataOwnerAccess)) missing.push('Data Owner & Access')
   if (!isFilled(s.dataCurrentState)) missing.push('Current State of Data')
   if (!isFilled(s.dataSensitivity)) missing.push('Data Sensitivity & Compliance')
-  if (!Object.values(s.aiWorkTypes).some(Boolean)) missing.push('AI Work Type')
+  if (requiresAi && !Object.values(s.aiWorkTypes).some(Boolean)) missing.push('AI Work Type')
   if (!isFilled(s.deploymentTarget)) missing.push('Deployment Target')
   if (!isFilled(s.acceptableErrorRate)) missing.push('Acceptable Error Rate')
   if (!isFilled(s.whenModelWrong)) missing.push('When Model is Wrong')
   if (!isFilled(s.whenUnavailable)) missing.push('When System is Unavailable')
 
-  const total = 9
+  const total = requiresAi ? 9 : 8
   return { complete: missing.length === 0, total, filled: total - missing.length, missing }
 }
 
@@ -154,15 +145,11 @@ export function validateSection7(data: FormData): SectionValidation {
     missing.push('At least one complete risk row (risk, likelihood, impact, and mitigation)')
   }
 
-  if (!isRaciFilled(s.raci)) {
-    missing.push('RACI matrix — assign R/A/C/I for at least one activity (Section 7.3)')
-  }
-
   if (!hasCompleteTableRow(s.openQuestions, ['question', 'owner', 'dueDate'])) {
     missing.push('At least one complete open question row (question, owner, and due date)')
   }
 
-  const total = 5
+  const total = 4
   return { complete: missing.length === 0, total, filled: total - missing.length, missing }
 }
 
@@ -177,22 +164,16 @@ export function validateSection8(data: FormData): SectionValidation {
     }
   }
 
-  allChecked(s.requirementsCompleteness, 'All Requirements Completeness items')
-  allChecked(s.aiReadiness, 'All AI Readiness items')
-  allChecked(s.stakeholderAlignment, 'All Stakeholder Alignment items')
-
-  if (data.section1.projectType === 'client-services') {
-    allChecked(s.commercialContractual, 'All Commercial & Contractual items')
-  }
+  allChecked(s.definitionOfReady, 'All Definition of Ready items')
 
   if (!s.gateDecision) missing.push('Gate Decision')
 
   const hasSignatures = s.signatures.filter(
     (sig) => isFilled(sig.name) && isFilled(sig.role) && isFilled(sig.date),
-  ).length >= 3
-  if (!hasSignatures) missing.push('All three signatures')
+  ).length >= 2
+  if (!hasSignatures) missing.push('Both signatures required')
 
-  const total = data.section1.projectType === 'client-services' ? 6 : 5
+  const total = 3
   return { complete: missing.length === 0, total, filled: total - missing.length, missing }
 }
 
@@ -218,7 +199,7 @@ export function isGateApproved(data: FormData): boolean {
   return data.section8.gateDecision === 'approved' && isGateReviewComplete(data)
 }
 
-export function isPreSystemDesignComplete(data: FormData): boolean {
+export function isProjectCharterComplete(data: FormData): boolean {
   return isGateApproved(data)
 }
 
@@ -230,9 +211,9 @@ export function getGateStatus(data: FormData): GateStatus {
   return 'open'
 }
 
-export function isPhaseUnlocked(phaseId: string, data: FormData | null): boolean {
-  if (phaseId === 'pre-system-design') return true
-  if (phaseId === 'prd') return Boolean(data && isPreSystemDesignComplete(data))
+export function isPhaseUnlocked(phaseId: string, _data: FormData | null): boolean {
+  if (phaseId === 'project-charter') return true
+  if (phaseId === 'prd') return true // TEMP: unlocked for testing
   return false
 }
 

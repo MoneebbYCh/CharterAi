@@ -1,21 +1,21 @@
-import { useCallback, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getDefaultChoiceOptions, getDefaultStringOptions } from '../data/optionDefaults'
+import { getVscodeApi } from '../utils/vscodeApi'
 
+const VSCode = getVscodeApi()
 const STORAGE_KEY = 'ascen-charter-custom-options-v1'
 
 type StringOptionKey = 'hml' | 'raci' | 'assumptionClass' | 'questionStatus'
-type ChoiceOptionKey = 'projectType' | 'priority' | 'roadmapStatus' | 'appetite' | 'gateDecision'
+type ChoiceOptionKey = 'projectType' | 'priority' | 'roadmapStatus' | 'appetite' | 'gateDecision' | 'prdStatus'
 
 type Store = {
   strings: Partial<Record<StringOptionKey, string[]>>
   choices: Partial<Record<ChoiceOptionKey, { value: string; label: string }[]>>
 }
 
-let store: Store = loadStore()
-const listeners = new Set<() => void>()
-
 function loadStore(): Store {
   try {
+    if (VSCode) return { strings: {}, choices: {} }
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return { strings: {}, choices: {} }
     return JSON.parse(raw) as Store
@@ -24,112 +24,125 @@ function loadStore(): Store {
   }
 }
 
-function saveStore() {
+function saveStoreToLocal(store: Store) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
-  listeners.forEach((l) => l())
 }
 
-function subscribe(listener: () => void) {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
+let store = loadStore()
 
-function getSnapshot() {
-  return store
-}
+export function useStringOptions(key: StringOptionKey) {
+  const [, forceUpdate] = useState(0)
 
-export function useStringOptions(key: StringOptionKey): {
-  options: string[]
-  addOption: (value: string) => void
-  removeOption: (value: string) => void
-  resetOptions: () => void
-} {
-  const current = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  useEffect(() => {
+    if (!VSCode) return
+    const handler = (event: MessageEvent) => {
+      const msg = event.data
+      if (msg.type === 'loadCustomOptions' && msg.data) {
+        store = msg.data
+        forceUpdate((v) => v + 1)
+      }
+    }
+    window.addEventListener('message', handler)
+    VSCode.postMessage({ type: 'loadCustomOptions' })
+    return () => window.removeEventListener('message', handler)
+  }, [])
 
-  const options = current.strings[key] ?? getDefaultStringOptions(key)
+  const commit = useCallback((next: Store) => {
+    store = next
+    saveStoreToLocal(next)
+    if (VSCode) VSCode.postMessage({ type: 'saveCustomOptions', data: next })
+    forceUpdate((v) => v + 1)
+  }, [])
+
+  const options = store.strings[key] ?? getDefaultStringOptions(key)
 
   const addOption = useCallback(
     (value: string) => {
       const trimmed = value.trim()
       if (!trimmed) return
-      const next = [...(current.strings[key] ?? getDefaultStringOptions(key))]
+      const next = [...(store.strings[key] ?? getDefaultStringOptions(key))]
       if (!next.includes(trimmed)) next.push(trimmed)
-      store = { ...store, strings: { ...store.strings, [key]: next } }
-      saveStore()
+      commit({ ...store, strings: { ...store.strings, [key]: next } })
     },
-    [current.strings, key],
+    [key, commit],
   )
 
   const removeOption = useCallback(
     (value: string) => {
-      const next = (current.strings[key] ?? getDefaultStringOptions(key)).filter((o) => o !== value)
-      store = { ...store, strings: { ...store.strings, [key]: next.length ? next : getDefaultStringOptions(key) } }
-      saveStore()
+      const next = (store.strings[key] ?? getDefaultStringOptions(key)).filter((o) => o !== value)
+      commit({ ...store, strings: { ...store.strings, [key]: next.length ? next : getDefaultStringOptions(key) } })
     },
-    [current.strings, key],
+    [key, commit],
   )
 
   const resetOptions = useCallback(() => {
     const { [key]: _, ...rest } = store.strings
-    store = { ...store, strings: rest }
-    saveStore()
-  }, [key])
+    commit({ ...store, strings: rest })
+  }, [key, commit])
 
   return { options, addOption, removeOption, resetOptions }
 }
 
-export function useChoiceOptions(key: ChoiceOptionKey): {
-  options: { value: string; label: string }[]
-  addOption: (value: string, label: string) => void
-  removeOption: (value: string) => void
-  updateOption: (value: string, label: string) => void
-  resetOptions: () => void
-} {
-  const current = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+export function useChoiceOptions(key: ChoiceOptionKey) {
+  const [, forceUpdate] = useState(0)
 
-  const options = current.choices[key] ?? getDefaultChoiceOptions(key)
+  useEffect(() => {
+    if (!VSCode) return
+    const handler = (event: MessageEvent) => {
+      const msg = event.data
+      if (msg.type === 'loadCustomOptions' && msg.data) {
+        store = msg.data
+        forceUpdate((v) => v + 1)
+      }
+    }
+    window.addEventListener('message', handler)
+    VSCode.postMessage({ type: 'loadCustomOptions' })
+    return () => window.removeEventListener('message', handler)
+  }, [])
+
+  const commit = useCallback((next: Store) => {
+    store = next
+    saveStoreToLocal(next)
+    if (VSCode) VSCode.postMessage({ type: 'saveCustomOptions', data: next })
+    forceUpdate((v) => v + 1)
+  }, [])
+
+  const options = store.choices[key] ?? getDefaultChoiceOptions(key)
 
   const addOption = useCallback(
     (value: string, label: string) => {
       const v = value.trim()
       const l = label.trim()
       if (!v || !l) return
-      const next = [...(current.choices[key] ?? getDefaultChoiceOptions(key))]
+      const next = [...(store.choices[key] ?? getDefaultChoiceOptions(key))]
       if (!next.some((o) => o.value === v)) next.push({ value: v, label: l })
-      store = { ...store, choices: { ...store.choices, [key]: next } }
-      saveStore()
+      commit({ ...store, choices: { ...store.choices, [key]: next } })
     },
-    [current.choices, key],
+    [key, commit],
   )
 
   const removeOption = useCallback(
     (value: string) => {
-      const next = (current.choices[key] ?? getDefaultChoiceOptions(key)).filter((o) => o.value !== value)
-      store = {
-        ...store,
-        choices: { ...store.choices, [key]: next.length ? next : getDefaultChoiceOptions(key) },
-      }
-      saveStore()
+      const next = (store.choices[key] ?? getDefaultChoiceOptions(key)).filter((o) => o.value !== value)
+      commit({ ...store, choices: { ...store.choices, [key]: next.length ? next : getDefaultChoiceOptions(key) } })
     },
-    [current.choices, key],
+    [key, commit],
   )
 
   const updateOption = useCallback(
     (value: string, label: string) => {
-      const next = (current.choices[key] ?? getDefaultChoiceOptions(key)).map((o) =>
+      const next = (store.choices[key] ?? getDefaultChoiceOptions(key)).map((o) =>
         o.value === value ? { ...o, label: label.trim() || o.label } : o,
       )
-      store = { ...store, choices: { ...store.choices, [key]: next } }
-      saveStore()
+      commit({ ...store, choices: { ...store.choices, [key]: next } })
     },
-    [current.choices, key],
+    [key, commit],
   )
 
   const resetOptions = useCallback(() => {
     const { [key]: _, ...rest } = store.choices
-    store = { ...store, choices: rest }
-    saveStore()
-  }, [key])
+    commit({ ...store, choices: rest })
+  }, [key, commit])
 
   return { options, addOption, removeOption, updateOption, resetOptions }
 }

@@ -1,5 +1,4 @@
 import type { FormData } from '../../types/form'
-import { Link } from 'react-router-dom'
 import {
   CheckboxGroup,
   DynamicTable,
@@ -9,10 +8,9 @@ import {
   TextField,
 } from '../FormFields'
 import { EditableChoiceGroup } from '../EditableChoiceGroup'
-import { EditableSelect } from '../EditableSelect'
 import { useShowValidation } from '../../context/ValidationContext'
-import { GATE_REQUIREMENTS } from '../../data/formDefaults'
-import { isRaciFilled, isGateApproved, validateSection8 } from '../../utils/validation'
+import { DEFINITION_OF_READY } from '../../data/formDefaults'
+import { isGateApproved, validateSection8 } from '../../utils/validation'
 
 interface Props {
   data: FormData
@@ -26,8 +24,8 @@ export function Section4({ data, update }: Props) {
     <section className="form-section">
       <SectionHeader
         number="04"
-        title="BABOK Elicitation — Stakeholder Alignment"
-        subtitle="Structured Techniques for Requirements Discovery"
+        title="Stakeholder Alignment & Discovery"
+        subtitle="Register · Assumptions · Artifacts"
         callout="This section is completed by the AI Lead AFTER running an elicitation session with the requestor."
       />
 
@@ -72,32 +70,7 @@ export function Section4({ data, update }: Props) {
         />
       </SubSection>
 
-      <SubSection title="4.2 Elicitation Techniques Used" note="At least two techniques must be used for any non-trivial project.">
-        <CheckboxGroup
-          label="Select all that apply"
-          required
-          minChecked={2}
-          hint="At least two techniques must be used for any non-trivial project."
-          items={[
-            { key: 'structuredInterview', label: 'Structured Interview (1-on-1 with key stakeholder)', checked: s.techniques.structuredInterview },
-            { key: 'workshop', label: 'Workshop / Focus Group (multiple stakeholders)', checked: s.techniques.workshop },
-            { key: 'fiveWhys', label: '5 Whys Root Cause Analysis', checked: s.techniques.fiveWhys },
-            { key: 'jtbd', label: 'Jobs-to-be-Done (JTBD) Mapping', checked: s.techniques.jtbd },
-            { key: 'assumptionMapping', label: 'Assumption Mapping / Pre-mortem', checked: s.techniques.assumptionMapping },
-            { key: 'processWalkthrough', label: 'Process / Journey Walkthrough', checked: s.techniques.processWalkthrough },
-            { key: 'documentAnalysis', label: 'Document Analysis (existing specs, reports)', checked: s.techniques.documentAnalysis },
-            { key: 'observation', label: 'Observation (shadowing the current workflow)', checked: s.techniques.observation },
-          ]}
-          onChange={(key, checked) =>
-            update((p) => ({
-              ...p,
-              section4: {
-                ...p.section4,
-                techniques: { ...p.section4.techniques, [key]: checked },
-              },
-            }))
-          }
-        />
+      <SubSection title="4.2 Elicitation Summary & Artifacts">
         <TextField
           label="Summary of Elicitation Session"
           value={s.elicitationSummary}
@@ -106,6 +79,14 @@ export function Section4({ data, update }: Props) {
           multiline
           rows={4}
           hint="Date held, who attended, key findings, any surprises or contradictions discovered."
+        />
+        <TextField
+          label="Artifact Links (meeting notes, recordings, research docs)"
+          value={s.artifactLinks}
+          onChange={(v) => update((p) => ({ ...p, section4: { ...p.section4, artifactLinks: v } }))}
+          multiline
+          rows={2}
+          hint="Paste URLs or paths to supporting material — Figma, Notion, Google Docs, etc."
         />
       </SubSection>
 
@@ -161,7 +142,7 @@ export function Section5({ data, update }: Props) {
         number="05"
         title="AI-Specific Requirements"
         subtitle="Data · Model · Infrastructure · Fallback"
-        callout="This section is purpose-built for AI/ML projects and must be completed for every engagement."
+        callout="If this project does not involve AI/ML work, toggle off 'Includes AI/ML work' in Section 1 — AI-specific validations will be skipped."
       />
 
       <SubSection title="5.1 Data Requirements">
@@ -192,46 +173,58 @@ export function Section5({ data, update }: Props) {
         <TextField label="Data Sensitivity & Compliance" value={s.dataSensitivity} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, dataSensitivity: v } }))} required multiline rows={2} />
       </SubSection>
 
-      <SubSection title="5.2 Model & Approach Requirements">
-        <CheckboxGroup
-          label="What type of AI work is this?"
-          required
-          items={[
-            { key: 'promptEngineering', label: 'Prompt engineering / LLM integration (API-based)', checked: s.aiWorkTypes.promptEngineering },
-            { key: 'fineTuning', label: 'Fine-tuning an existing model', checked: s.aiWorkTypes.fineTuning },
-            { key: 'customTraining', label: 'Training a custom model from scratch', checked: s.aiWorkTypes.customTraining },
-            { key: 'rag', label: 'RAG (Retrieval-Augmented Generation)', checked: s.aiWorkTypes.rag },
-            { key: 'agentic', label: 'Agentic / multi-agent pipeline', checked: s.aiWorkTypes.agentic },
-            { key: 'classicalMl', label: 'Classical ML (classification, regression, clustering)', checked: s.aiWorkTypes.classicalMl },
-            { key: 'computerVision', label: 'Computer vision', checked: s.aiWorkTypes.computerVision },
-            { key: 'nlp', label: 'NLP / text processing (non-LLM)', checked: s.aiWorkTypes.nlp },
-            { key: 'dataPipeline', label: 'Data pipeline / analytics infrastructure', checked: s.aiWorkTypes.dataPipeline },
-            { key: 'other', label: 'Other (describe below)', checked: s.aiWorkTypes.other },
-          ]}
-          onChange={(key, checked) =>
-            update((p) => ({
-              ...p,
-              section5: {
-                ...p.section5,
-                aiWorkTypes: { ...p.section5.aiWorkTypes, [key]: checked },
-              },
-            }))
-          }
-        />
-        {s.aiWorkTypes.other && (
-          <TextField label='If "Other" — describe the type of work' value={s.aiWorkOther} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, aiWorkOther: v } }))} multiline />
-        )}
-        <TextField label="Are there technology stack constraints?" value={s.techStackConstraints} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, techStackConstraints: v } }))} multiline rows={2} />
-        <TextField label="What is the deployment target?" value={s.deploymentTarget} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, deploymentTarget: v } }))} required multiline rows={2} />
-      </SubSection>
+      {data.section1.includesAiWork ? (
+        <SubSection title="5.2 Model & Approach Requirements">
+          <CheckboxGroup
+            label="What type of AI work is this?"
+            required
+            items={[
+              { key: 'promptEngineering', label: 'Prompt engineering / LLM integration (API-based)', checked: s.aiWorkTypes.promptEngineering },
+              { key: 'fineTuning', label: 'Fine-tuning an existing model', checked: s.aiWorkTypes.fineTuning },
+              { key: 'customTraining', label: 'Training a custom model from scratch', checked: s.aiWorkTypes.customTraining },
+              { key: 'rag', label: 'RAG (Retrieval-Augmented Generation)', checked: s.aiWorkTypes.rag },
+              { key: 'agentic', label: 'Agentic / multi-agent pipeline', checked: s.aiWorkTypes.agentic },
+              { key: 'classicalMl', label: 'Classical ML (classification, regression, clustering)', checked: s.aiWorkTypes.classicalMl },
+              { key: 'computerVision', label: 'Computer vision', checked: s.aiWorkTypes.computerVision },
+              { key: 'nlp', label: 'NLP / text processing (non-LLM)', checked: s.aiWorkTypes.nlp },
+              { key: 'dataPipeline', label: 'Data pipeline / analytics infrastructure', checked: s.aiWorkTypes.dataPipeline },
+              { key: 'other', label: 'Other (describe below)', checked: s.aiWorkTypes.other },
+            ]}
+            onChange={(key, checked) =>
+              update((p) => ({
+                ...p,
+                section5: {
+                  ...p.section5,
+                  aiWorkTypes: { ...p.section5.aiWorkTypes, [key]: checked },
+                },
+              }))
+            }
+          />
+          {s.aiWorkTypes.other && (
+            <TextField label='If "Other" — describe the type of work' value={s.aiWorkOther} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, aiWorkOther: v } }))} multiline />
+          )}
+          <TextField label="Are there technology stack constraints?" value={s.techStackConstraints} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, techStackConstraints: v } }))} multiline rows={2} />
+          <TextField label="What is the deployment target?" value={s.deploymentTarget} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, deploymentTarget: v } }))} required multiline rows={2} />
+        </SubSection>
+      ) : (
+        <SubSection title="5.2 Technical Requirements">
+          <div className="border-2 border-dashed border-on-background p-4 mb-4 bg-surface-container-low">
+            <p className="text-sm text-on-surface-variant" style={{ fontFamily: 'var(--font-label)' }}>
+              AI/ML work type is not required for this project (set in Section 1). Complete the fields below as applicable.
+            </p>
+          </div>
+          <TextField label="Are there technology stack constraints?" value={s.techStackConstraints} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, techStackConstraints: v } }))} multiline rows={2} />
+          <TextField label="What is the deployment target?" value={s.deploymentTarget} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, deploymentTarget: v } }))} required multiline rows={2} />
+        </SubSection>
+      )}
 
-      <SubSection title="5.3 Performance & Infrastructure Constraints">
+      <SubSection title="5.3 Performance & Infrastructure Constraints" note="Ballpark estimates are fine. Exact numbers come in System Design.">
         <div className="field-row">
-          <TextField label="Latency Requirement" value={s.latencyRequirement} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, latencyRequirement: v } }))} />
-          <TextField label="Throughput Requirement" value={s.throughputRequirement} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, throughputRequirement: v } }))} />
+          <TextField label="Latency Requirement" value={s.latencyRequirement} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, latencyRequirement: v } }))} hint='e.g. "must be real-time (<500ms)" or "async batch processing OK"' />
+          <TextField label="Throughput Requirement" value={s.throughputRequirement} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, throughputRequirement: v } }))} hint='e.g. "~1k requests/day" or "handles peak of 100 concurrent users"' />
         </div>
         <div className="field-row">
-          <TextField label="Cost Per Call Constraint" value={s.costPerCall} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, costPerCall: v } }))} />
+          <TextField label="Cost Constraint" value={s.costPerCall} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, costPerCall: v } }))} hint='e.g. "must be under $0.01/call" or "budget is $500/mo for inference"' />
           <TextField label="Uptime / Availability SLA" value={s.uptimeSla} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, uptimeSla: v } }))} />
         </div>
         <TextField label="Infrastructure Constraints" value={s.infrastructureConstraints} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, infrastructureConstraints: v } }))} multiline rows={2} />
@@ -241,26 +234,6 @@ export function Section5({ data, update }: Props) {
         <TextField label="What is the acceptable error rate?" value={s.acceptableErrorRate} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, acceptableErrorRate: v } }))} required multiline rows={2} />
         <TextField label="What happens when the model is wrong?" value={s.whenModelWrong} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, whenModelWrong: v } }))} required multiline rows={3} />
         <TextField label="What happens when the system is unavailable?" value={s.whenUnavailable} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, whenUnavailable: v } }))} required multiline rows={2} />
-        <CheckboxGroup
-          label="Confidence / Output Handling"
-          items={[
-            { key: 'confidenceScore', label: 'System returns confidence score with every output', checked: s.confidenceHandling.confidenceScore },
-            { key: 'lowConfidenceReview', label: 'Low-confidence outputs are flagged for human review', checked: s.confidenceHandling.lowConfidenceReview },
-            { key: 'lowConfidenceReject', label: 'Low-confidence outputs are rejected and fallback triggered', checked: s.confidenceHandling.lowConfidenceReject },
-            { key: 'allLogged', label: 'All outputs are logged for post-hoc review', checked: s.confidenceHandling.allLogged },
-            { key: 'userFeedback', label: 'User can provide feedback / correction on outputs', checked: s.confidenceHandling.userFeedback },
-            { key: 'autoApproved', label: 'Outputs above a threshold are auto-approved', checked: s.confidenceHandling.autoApproved },
-          ]}
-          onChange={(key, checked) =>
-            update((p) => ({
-              ...p,
-              section5: {
-                ...p.section5,
-                confidenceHandling: { ...p.section5.confidenceHandling, [key]: checked },
-              },
-            }))
-          }
-        />
         <TextField label="Bias, Fairness & Ethical Considerations" value={s.biasFairness} onChange={(v) => update((p) => ({ ...p, section5: { ...p.section5, biasFairness: v } }))} multiline rows={3} />
       </SubSection>
     </section>
@@ -295,6 +268,8 @@ export function Section6({ data, update }: Props) {
           <TextField label="Who approves completion on the client side?" value={s.clientApprover} onChange={(v) => update((p) => ({ ...p, section6A: { ...p.section6A, clientApprover: v } }))} required />
           <TextField label="Client Infrastructure & Access Dependencies" value={s.infrastructureDependencies} onChange={(v) => update((p) => ({ ...p, section6A: { ...p.section6A, infrastructureDependencies: v } }))} multiline rows={2} />
           <TextField label="Commercial Constraints" value={s.commercialConstraints} onChange={(v) => update((p) => ({ ...p, section6A: { ...p.section6A, commercialConstraints: v } }))} multiline rows={2} />
+          <TextField label="System / Service Dependencies" value={s.dependencies} onChange={(v) => update((p) => ({ ...p, section6A: { ...p.section6A, dependencies: v } }))} multiline rows={2} hint="What other systems, APIs, or teams does this depend on?" />
+          <TextField label="Artifact Links" value={s.artifactLinks} onChange={(v) => update((p) => ({ ...p, section6A: { ...p.section6A, artifactLinks: v } }))} multiline rows={2} hint="Contract docs, SOW, email threads, client portal links" />
         </SubSection>
       </section>
     )
@@ -322,6 +297,8 @@ export function Section6({ data, update }: Props) {
           optionKey="appetite"
           required
         />
+        <TextField label="System / Service Dependencies" value={s.dependencies} onChange={(v) => update((p) => ({ ...p, section6B: { ...p.section6B, dependencies: v } }))} multiline rows={2} hint="What other systems, APIs, or teams does this depend on?" />
+        <TextField label="Artifact Links" value={s.artifactLinks} onChange={(v) => update((p) => ({ ...p, section6B: { ...p.section6B, artifactLinks: v } }))} multiline rows={2} hint="Research docs, product briefs, user feedback, Notion links" />
       </SubSection>
     </section>
   )
@@ -329,8 +306,6 @@ export function Section6({ data, update }: Props) {
 
 export function Section7({ data, update }: Props) {
   const s = data.section7
-  const showValidation = useShowValidation()
-  const raciIncomplete = showValidation && !isRaciFilled(s.raci)
 
   return (
     <section className="form-section">
@@ -378,49 +353,7 @@ export function Section7({ data, update }: Props) {
         />
       </SubSection>
 
-      <SubSection
-        title="7.3 RACI Matrix"
-        note="R = Responsible · A = Accountable · C = Consulted · I = Informed. At least one assignment (R/A/C/I) is required."
-      >
-        <div className={`dynamic-table-wrap ${raciIncomplete ? 'field-invalid' : ''}`}>
-          <table className="dynamic-table raci-table">
-            <thead>
-              <tr>
-                <th>Activity / Decision</th>
-                <th>AI Lead</th>
-                <th>AI Eng 1</th>
-                <th>AI Eng 2</th>
-                <th>Stakeholder</th>
-              </tr>
-            </thead>
-            <tbody>
-              {s.raci.map((row, i) => (
-                <tr key={row.activity}>
-                  <td className="raci-activity">{row.activity}</td>
-                  {(['aiLead', 'aiEng1', 'aiEng2', 'stakeholder'] as const).map((col) => (
-                    <td key={col}>
-                      <EditableSelect
-                        compact
-                        optionKey="raci"
-                        value={row[col]}
-                        onChange={(v) =>
-                          update((p) => {
-                            const raci = [...p.section7.raci]
-                            raci[i] = { ...raci[i], [col]: v as typeof row.aiLead }
-                            return { ...p, section7: { ...p.section7, raci } }
-                          })
-                        }
-                      />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </SubSection>
-
-      <SubSection title="7.4 Open Questions & Unknowns">
+      <SubSection title="7.3 Open Questions & Unknowns">
         <DynamicTable
           columns={[
             { key: 'question', label: 'Question / Unknown', multiline: true, required: true },
@@ -474,6 +407,7 @@ interface Section8Props extends Props {
   upstreamIncomplete?: boolean
   incompleteSections?: IncompleteSection[]
   onGoToSection?: (sectionId: number) => void
+  onProceedToPrd?: () => void
 }
 
 export function Section8({
@@ -482,16 +416,16 @@ export function Section8({
   upstreamIncomplete = false,
   incompleteSections = [],
   onGoToSection,
+  onProceedToPrd,
 }: Section8Props) {
   const s = data.section8
-  const isClient = data.section1.projectType === 'client-services'
   const showValidation = useShowValidation()
   const signaturesIncomplete =
     showValidation &&
     s.signatures.filter(
       (sig) =>
         sig.name.trim().length > 0 && sig.role.trim().length > 0 && sig.date.trim().length > 0,
-    ).length < 3
+    ).length < 2
   const gateApproved = isGateApproved(data)
   const gateReview = validateSection8(data)
   const gateDecisionApprovedButIncomplete =
@@ -502,22 +436,23 @@ export function Section8({
       <SectionHeader
         number="08"
         title="Definition of Ready — Gate Review"
-        subtitle="No project proceeds to System Design without passing this gate"
-        callout="The AI Lead reviews every item on this checklist. If any mandatory item is unchecked, the project is returned for revision."
+        subtitle="No project proceeds to PRD without passing this gate"
+        callout="The AI Lead reviews every item. If any item is unchecked, the project is returned for revision."
       />
 
       {gateApproved && (
         <div className="validation-banner mb-4 text-left border-green-700 bg-green-50">
           <p className="mb-3">
-            <strong>Gate approved.</strong> Pre-System Design is complete. Phase 2 (PRD Creation) is now unlocked.
+            <strong>Gate approved.</strong> Project Charter is complete. Phase 2 (PRD Creation) is now unlocked.
           </p>
-          <Link
-            to="/prd"
-            className="inline-block border-2 border-on-background bg-primary text-on-primary font-bold px-4 py-1.5 text-xs no-underline outset-button"
+          <button
+            type="button"
+            onClick={onProceedToPrd}
+            className="inline-block border-2 border-on-background bg-primary text-on-primary font-bold px-4 py-1.5 text-xs outset-button"
             style={{ fontFamily: 'var(--font-label)' }}
           >
             Proceed to PRD Creation →
-          </Link>
+          </button>
         </div>
       )}
 
@@ -557,68 +492,21 @@ export function Section8({
       )}
 
       <GateChecklist
-        title="8.1 Requirements Completeness"
-        items={GATE_REQUIREMENTS.requirementsCompleteness}
-        values={s.requirementsCompleteness}
+        title="8.1 Definition of Ready"
+        items={DEFINITION_OF_READY}
+        values={s.definitionOfReady}
         onChange={(id, checked) =>
           update((p) => ({
             ...p,
             section8: {
               ...p.section8,
-              requirementsCompleteness: { ...p.section8.requirementsCompleteness, [id]: checked },
+              definitionOfReady: { ...p.section8.definitionOfReady, [id]: checked },
             },
           }))
         }
       />
 
-      <GateChecklist
-        title="8.2 AI Readiness"
-        items={GATE_REQUIREMENTS.aiReadiness}
-        values={s.aiReadiness}
-        onChange={(id, checked) =>
-          update((p) => ({
-            ...p,
-            section8: {
-              ...p.section8,
-              aiReadiness: { ...p.section8.aiReadiness, [id]: checked },
-            },
-          }))
-        }
-      />
-
-      <GateChecklist
-        title="8.3 Stakeholder Alignment"
-        items={GATE_REQUIREMENTS.stakeholderAlignment}
-        values={s.stakeholderAlignment}
-        onChange={(id, checked) =>
-          update((p) => ({
-            ...p,
-            section8: {
-              ...p.section8,
-              stakeholderAlignment: { ...p.section8.stakeholderAlignment, [id]: checked },
-            },
-          }))
-        }
-      />
-
-      {isClient && (
-        <GateChecklist
-          title="8.4 Commercial & Contractual (Client Services only)"
-          items={GATE_REQUIREMENTS.commercialContractual}
-          values={s.commercialContractual}
-          onChange={(id, checked) =>
-            update((p) => ({
-              ...p,
-              section8: {
-                ...p.section8,
-                commercialContractual: { ...p.section8.commercialContractual, [id]: checked },
-              },
-            }))
-          }
-        />
-      )}
-
-      <SubSection title="8.5 Gate Decision">
+      <SubSection title="8.2 Gate Decision">
         <EditableChoiceGroup
           label="Gate Decision"
           value={s.gateDecision}
@@ -641,7 +529,7 @@ export function Section8({
         />
       </SubSection>
 
-      <SubSection title="8.6 Signatures" note="All three parties must sign before design begins.">
+      <SubSection title="8.3 Signatures" note="Both parties must sign before the charter is approved.">
         <div className={`dynamic-table-wrap ${signaturesIncomplete ? 'field-invalid' : ''}`}>
           <table className="dynamic-table">
             <thead>

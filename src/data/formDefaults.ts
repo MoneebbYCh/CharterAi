@@ -1,82 +1,26 @@
-import type { FormData, RACIRow } from '../types/form'
+import type { FormData } from '../types/form'
 
-const RACI_ACTIVITIES = [
-  'Problem Definition',
-  'Data Access & Prep',
-  'Model Design',
-  'Evaluation Criteria',
-  'Client/Stakeholder Sign-off',
-  'Deployment Decision',
-] as const
-
-export const STORAGE_KEY = 'ascen-project-charter-v1'
+export const STORAGE_KEY = 'ascen-project-charter-v2'
 
 export const SECTION_LABELS = [
-  { id: 1, title: 'Project Identity', subtitle: 'Classification' },
+  { id: 1, title: 'Project Identity', subtitle: 'Budget · Team · Milestones' },
   { id: 2, title: 'Problem Statement', subtitle: 'Business Context' },
   { id: 3, title: 'Success Metrics', subtitle: 'Acceptance Criteria' },
-  { id: 4, title: 'BABOK Elicitation', subtitle: 'Stakeholder Alignment' },
+  { id: 4, title: 'Stakeholder Alignment', subtitle: 'Elicitation · Assumptions' },
   { id: 5, title: 'AI Requirements', subtitle: 'Data · Model · Fallback' },
   { id: 6, title: 'Project Context', subtitle: '6A / 6B Branching' },
   { id: 7, title: 'Constraints & Risks', subtitle: 'Open Questions' },
   { id: 8, title: 'Gate Review', subtitle: 'Definition of Ready' },
 ] as const
 
-export const GATE_REQUIREMENTS = {
-  requirementsCompleteness: [
-    { id: 'problemConfirmed', label: 'Problem statement is written in clear, non-technical language and has been confirmed by the requestor' },
-    { id: 'smartObjectives', label: 'Business objectives are SMART and linked to a measurable outcome' },
-    { id: 'nonGoalsAgreed', label: 'Non-goals are explicitly listed and agreed upon by the stakeholder' },
-    { id: 'mandatoryFields', label: 'All mandatory fields (*) in this document are completed' },
-    { id: 'successMetrics', label: 'Success metrics are defined, measurable, and agreed upon before design begins' },
-    { id: 'acceptanceCriteria', label: 'Acceptance criteria are written in testable, unambiguous language' },
-  ],
-  aiReadiness: [
-    { id: 'dataSource', label: 'Data source is identified, access is confirmed or access timeline is agreed upon' },
-    { id: 'dataQuality', label: 'Data quality has been assessed or a data audit is scheduled as the first task' },
-    { id: 'performanceThresholds', label: 'Model performance thresholds (Section 3.2) are defined and agreed upon' },
-    { id: 'fallbackBehavior', label: 'Fallback behavior when the model fails is explicitly defined and approved' },
-    { id: 'latencyThroughput', label: 'Latency, throughput, and cost constraints are documented' },
-    { id: 'compliance', label: 'Compliance and data sensitivity requirements have been reviewed' },
-    { id: 'biasFairness', label: 'Bias and fairness considerations have been discussed and documented' },
-  ],
-  stakeholderAlignment: [
-    { id: 'elicitationSession', label: 'At least one structured elicitation session has been completed and documented (Section 4)' },
-    { id: 'stakeholdersIdentified', label: 'All key stakeholders are identified in the stakeholder register (Section 4.1)' },
-    { id: 'assumptionsChallenged', label: 'All high-risk assumptions have been challenged and either validated or escalated' },
-    { id: 'openQuestionsOwned', label: 'Open questions in Section 7.4 have owners and due dates assigned' },
-    { id: 'stakeholderReviewed', label: 'Client or internal stakeholder has reviewed this document and confirmed accuracy' },
-    { id: 'raciFilled', label: 'RACI is filled and all parties understand their role' },
-  ],
-  commercialContractual: [
-    { id: 'writtenConfirmation', label: 'Written client confirmation of the request has been received and attached' },
-    { id: 'scopeConfirmed', label: 'Scope is confirmed as in-contract, or a new SOW has been initiated' },
-    { id: 'clientPoc', label: 'Client POC and approval authority are identified' },
-    { id: 'deliverableAgreed', label: 'Deliverable format and completion criteria are agreed upon in writing' },
-  ],
-} as const
-
-function createRaciRows(): RACIRow[] {
-  return RACI_ACTIVITIES.map((activity) => ({
-    activity,
-    aiLead: '',
-    aiEng1: '',
-    aiEng2: '',
-    stakeholder: '',
-  }))
-}
-
-function createGateChecklist() {
-  const toRecord = (items: readonly { id: string }[]) =>
-    Object.fromEntries(items.map((item) => [item.id, false]))
-
-  return {
-    requirementsCompleteness: toRecord(GATE_REQUIREMENTS.requirementsCompleteness),
-    aiReadiness: toRecord(GATE_REQUIREMENTS.aiReadiness),
-    stakeholderAlignment: toRecord(GATE_REQUIREMENTS.stakeholderAlignment),
-    commercialContractual: toRecord(GATE_REQUIREMENTS.commercialContractual),
-  }
-}
+export const DEFINITION_OF_READY = [
+  { id: 'problemConfirmed', label: 'Problem statement is confirmed by the requestor' },
+  { id: 'successMetricsDefined', label: 'Success metrics are defined and agreed upon' },
+  { id: 'dataAccessConfirmed', label: 'Data access is confirmed or a timeline is agreed' },
+  { id: 'stakeholdersIdentified', label: 'Key stakeholders are identified' },
+  { id: 'budgetTimelineBallparked', label: 'Budget and timeline are ballparked' },
+  { id: 'teamAvailable', label: 'Team availability is confirmed' },
+] as const
 
 export function createInitialFormData(): FormData {
   return {
@@ -91,6 +35,11 @@ export function createInitialFormData(): FormData {
       projectType: '',
       priority: '',
       priorityJustification: '',
+      budgetEstimate: '',
+      teamSkillsRequired: '',
+      sponsorDecisionMaker: '',
+      keyMilestones: '',
+      includesAiWork: true,
     },
     section2: {
       coreProblem: '',
@@ -120,18 +69,9 @@ export function createInitialFormData(): FormData {
     },
     section4: {
       stakeholders: [{ nameRole: '', interestLevel: '', influence: '', keyConcern: '' }],
-      techniques: {
-        structuredInterview: false,
-        workshop: false,
-        fiveWhys: false,
-        jtbd: false,
-        assumptionMapping: false,
-        processWalkthrough: false,
-        documentAnalysis: false,
-        observation: false,
-      },
       elicitationSummary: '',
       assumptions: [{ assumption: '', classification: '', ifWrongImpact: '' }],
+      artifactLinks: '',
     },
     section5: {
       dataRequired: '',
@@ -170,14 +110,6 @@ export function createInitialFormData(): FormData {
       acceptableErrorRate: '',
       whenModelWrong: '',
       whenUnavailable: '',
-      confidenceHandling: {
-        confidenceScore: false,
-        lowConfidenceReview: false,
-        lowConfidenceReject: false,
-        allLogged: false,
-        userFeedback: false,
-        autoApproved: false,
-      },
       biasFairness: '',
     },
     section6A: {
@@ -189,6 +121,8 @@ export function createInitialFormData(): FormData {
       clientApprover: '',
       infrastructureDependencies: '',
       commercialConstraints: '',
+      dependencies: '',
+      artifactLinks: '',
     },
     section6B: {
       productArea: '',
@@ -196,6 +130,8 @@ export function createInitialFormData(): FormData {
       internalStakeholder: '',
       userResearchEvidence: '',
       appetite: '',
+      dependencies: '',
+      artifactLinks: '',
     },
     section7: {
       timeConstraints: '',
@@ -203,15 +139,13 @@ export function createInitialFormData(): FormData {
       technologyConstraints: '',
       budgetConstraints: '',
       risks: [{ risk: '', likelihood: '', impact: '', mitigation: '' }],
-      raci: createRaciRows(),
       openQuestions: [{ question: '', owner: '', dueDate: '', status: '' }],
     },
     section8: {
-      ...createGateChecklist(),
+      definitionOfReady: Object.fromEntries(DEFINITION_OF_READY.map((item) => [item.id, false])),
       gateDecision: '',
       gateReviewNotes: '',
       signatures: [
-        { name: '', role: '', signature: '', date: '' },
         { name: '', role: '', signature: '', date: '' },
         { name: '', role: '', signature: '', date: '' },
       ],

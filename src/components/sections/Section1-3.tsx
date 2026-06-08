@@ -21,7 +21,7 @@ export function Section1({ data, update }: Props) {
       <SectionHeader
         number="01"
         title="Project Identity & Classification"
-        subtitle="PMI Project Charter — Identification Block"
+        subtitle="Initiation · Budget · Team"
       />
 
       <SubSection title="1.1 Basic Information">
@@ -95,7 +95,64 @@ export function Section1({ data, update }: Props) {
         />
       </SubSection>
 
-      <SubSection title="1.3 Priority Classification">
+      <SubSection title="1.3 AI / ML Scope">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={s.includesAiWork}
+            onChange={(e) =>
+              update((p) => ({
+                ...p,
+                section1: { ...p.section1, includesAiWork: e.target.checked },
+              }))
+            }
+            className="mt-0.5 w-4 h-4 border-2 border-on-background"
+          />
+          <div>
+            <span className="font-bold text-sm">This project involves AI/ML work</span>
+            <p className="text-xs text-on-surface-variant mt-0.5">
+              Uncheck for pure data pipelines, infrastructure, or non-AI automation projects. AI-specific fields in Section 5 will be optional.
+            </p>
+          </div>
+        </label>
+      </SubSection>
+
+      <SubSection title="1.4 Budget & Resourcing">
+        <div className="field-row">
+          <TextField
+            label="Budget Estimate / Cost Range"
+            value={s.budgetEstimate}
+            onChange={(v) => update((p) => ({ ...p, section1: { ...p.section1, budgetEstimate: v } }))}
+            required
+            hint="Ballpark is fine — e.g. $10k–20k, 2–3 weeks dev time"
+          />
+        </div>
+        <TextField
+          label="Team / Skills Required"
+          value={s.teamSkillsRequired}
+          onChange={(v) => update((p) => ({ ...p, section1: { ...p.section1, teamSkillsRequired: v } }))}
+          multiline
+          rows={2}
+          hint="What roles are needed? E.g. 1 AI engineer, 1 data analyst, SME"
+        />
+        <TextField
+          label="Sponsor / Decision Maker"
+          value={s.sponsorDecisionMaker}
+          onChange={(v) => update((p) => ({ ...p, section1: { ...p.section1, sponsorDecisionMaker: v } }))}
+          required
+          hint="Who approves this charter and makes go/no-go decisions?"
+        />
+        <TextField
+          label="Key Milestones / High-Level Timeline"
+          value={s.keyMilestones}
+          onChange={(v) => update((p) => ({ ...p, section1: { ...p.section1, keyMilestones: v } }))}
+          multiline
+          rows={3}
+          hint="E.g. Design by Week 2, Dev by Week 4, Demo by Week 6"
+        />
+      </SubSection>
+
+      <SubSection title="1.4 Priority Classification">
         <EditableChoiceGroup
           label="Priority"
           value={s.priority}

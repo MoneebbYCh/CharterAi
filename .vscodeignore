@@ -1,0 +1,15 @@
+.vscode/**
+.git/**
+.gitignore
+.gitattributes
+node_modules/**
+src/**
+extension/**
+.eslintrc*
+tsconfig*.json
+vite.config.ts
+package-lock.json
+public/icons.svg
+public/home-dashboard.png
+.Ascen_AI_Project_Charter_Template.docx
+README.md

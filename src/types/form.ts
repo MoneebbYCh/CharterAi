@@ -3,7 +3,7 @@ export type Priority = 'P0' | 'P1' | 'P2' | 'P3' | ''
 export type HML = 'H' | 'M' | 'L' | ''
 export type AssumptionClass = 'KNOWN' | 'UNKNOWN' | 'RISKY' | ''
 export type GateDecision = 'approved' | 'needs-revision' | 'rejected' | ''
-export type RACIRole = 'R' | 'A' | 'C' | 'I' | ''
+
 
 export interface PerformanceMetricRow {
   metric: string
@@ -46,14 +46,6 @@ export interface SignatureRow {
   date: string
 }
 
-export interface RACIRow {
-  activity: string
-  aiLead: RACIRole
-  aiEng1: RACIRole
-  aiEng2: RACIRole
-  stakeholder: RACIRole
-}
-
 export interface FormData {
   section1: {
     projectName: string
@@ -66,6 +58,11 @@ export interface FormData {
     projectType: ProjectType
     priority: Priority
     priorityJustification: string
+    budgetEstimate: string
+    teamSkillsRequired: string
+    sponsorDecisionMaker: string
+    keyMilestones: string
+    includesAiWork: boolean
   }
   section2: {
     coreProblem: string
@@ -95,18 +92,9 @@ export interface FormData {
   }
   section4: {
     stakeholders: StakeholderRow[]
-    techniques: {
-      structuredInterview: boolean
-      workshop: boolean
-      fiveWhys: boolean
-      jtbd: boolean
-      assumptionMapping: boolean
-      processWalkthrough: boolean
-      documentAnalysis: boolean
-      observation: boolean
-    }
     elicitationSummary: string
     assumptions: AssumptionRow[]
+    artifactLinks: string
   }
   section5: {
     dataRequired: string
@@ -145,14 +133,6 @@ export interface FormData {
     acceptableErrorRate: string
     whenModelWrong: string
     whenUnavailable: string
-    confidenceHandling: {
-      confidenceScore: boolean
-      lowConfidenceReview: boolean
-      lowConfidenceReject: boolean
-      allLogged: boolean
-      userFeedback: boolean
-      autoApproved: boolean
-    }
     biasFairness: string
   }
   section6A: {
@@ -164,6 +144,8 @@ export interface FormData {
     clientApprover: string
     infrastructureDependencies: string
     commercialConstraints: string
+    dependencies: string
+    artifactLinks: string
   }
   section6B: {
     productArea: string
@@ -171,6 +153,8 @@ export interface FormData {
     internalStakeholder: string
     userResearchEvidence: string
     appetite: 'small' | 'medium' | 'large' | 'spike' | ''
+    dependencies: string
+    artifactLinks: string
   }
   section7: {
     timeConstraints: string
@@ -178,14 +162,10 @@ export interface FormData {
     technologyConstraints: string
     budgetConstraints: string
     risks: RiskRow[]
-    raci: RACIRow[]
     openQuestions: OpenQuestionRow[]
   }
   section8: {
-    requirementsCompleteness: Record<string, boolean>
-    aiReadiness: Record<string, boolean>
-    stakeholderAlignment: Record<string, boolean>
-    commercialContractual: Record<string, boolean>
+    definitionOfReady: Record<string, boolean>
     gateDecision: GateDecision
     gateReviewNotes: string
     signatures: SignatureRow[]
