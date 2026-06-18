@@ -1,11 +1,12 @@
 {
   "c:/Projects/Req-Gath-Sys/eslint.config.js": 427844615,
+  "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts": 2300249816,
   "c:/Projects/Req-Gath-Sys/extension/codeIndexer.ts": 585469239,
-  "c:/Projects/Req-Gath-Sys/extension/extension.ts": 91444627,
+  "c:/Projects/Req-Gath-Sys/extension/extension.ts": 513783967,
   "c:/Projects/Req-Gath-Sys/extension/formStateManager.ts": 3544016077,
   "c:/Projects/Req-Gath-Sys/extension/pdfExportHandler.ts": 1813146149,
-  "c:/Projects/Req-Gath-Sys/extension/protocol.ts": 2971651012,
-  "c:/Projects/Req-Gath-Sys/src/App.tsx": 459433337,
+  "c:/Projects/Req-Gath-Sys/extension/protocol.ts": 733700306,
+  "c:/Projects/Req-Gath-Sys/src/App.tsx": 3671331283,
   "c:/Projects/Req-Gath-Sys/src/components/AutoResizeTextarea.tsx": 296160612,
   "c:/Projects/Req-Gath-Sys/src/components/EditableChoiceGroup.tsx": 296160612,
   "c:/Projects/Req-Gath-Sys/src/components/EditableSelect.tsx": 4030663343,
@@ -28,7 +29,7 @@
   "c:/Projects/Req-Gath-Sys/src/data/optionDefaults.ts": 1552006367,
   "c:/Projects/Req-Gath-Sys/src/data/phases.ts": 2163350282,
   "c:/Projects/Req-Gath-Sys/src/data/prdFormDefaults.ts": 1996504828,
-  "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts": 4044180491,
+  "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts": 1983151839,
   "c:/Projects/Req-Gath-Sys/src/hooks/useCodeIndex.ts": 502016694,
   "c:/Projects/Req-Gath-Sys/src/hooks/useCustomOptions.ts": 1401882295,
   "c:/Projects/Req-Gath-Sys/src/hooks/useFormState.ts": 1524144596,
@@ -56,6 +57,6 @@
   "c:/Projects/Req-Gath-Sys/src/assets/react.svg": 589566369,
   "c:/Projects/Req-Gath-Sys/src/assets/vite.svg": 589566369,
   "__madar_meta__": {
-    "total_words": 30684
+    "total_words": 32361
   }
 }

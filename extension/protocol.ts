@@ -29,6 +29,7 @@ export type ExtensionToWebviewMessage =
   | { type: 'navigateTo'; view: View }
   | { type: 'indexProgress'; phase: string; percent: number }
   | { type: 'loadCodeIndex'; data: CodeIndex | null }
+  | { type: 'chatResponse'; text: string }
 
 export type WebviewToExtensionMessage =
   | { type: 'saveCharter'; data: unknown }
@@ -44,3 +45,4 @@ export type WebviewToExtensionMessage =
   | { type: 'ready' }
   | { type: 'indexCodebase' }
   | { type: 'loadCodeIndex' }
+  | { type: 'chatMessage'; text: string; phase: string }

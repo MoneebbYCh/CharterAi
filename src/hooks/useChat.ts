@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { getVscodeApi } from '../utils/vscodeApi'
 
 export interface ChatMessage {
   id: string
@@ -7,21 +8,27 @@ export interface ChatMessage {
   timestamp: number
 }
 
+const vscode = getVscodeApi()
+
 let msgId = 0
-function nextId(): string { return `chat-${++msgId}` }
+function nextId(): string {
+  return `chat-${++msgId}`
+}
 
 const WELCOME: ChatMessage = {
   id: nextId(),
   role: 'assistant',
-  text: 'Hello! I\'m your Req-Gath-Sys assistant. Ask me anything about your project, codebase, or pipeline phases — backend integration coming soon!',
+  text: "Hello! I'm your Req-Gath-Sys AI assistant. I can help fill in project charter and PRD forms — just ask!",
   timestamp: Date.now(),
 }
 
-export function useChat() {
+const TIMEOUT_MS = 25_000
+
+export function useChat(phase: string) {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME])
   const [isTyping, setIsTyping] = useState(false)
-  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const toggleOpen = useCallback(() => {
     setIsOpen((prev) => !prev)
@@ -31,39 +38,83 @@ export function useChat() {
     setIsOpen(false)
   }, [])
 
-  const sendMessage = useCallback((text: string) => {
-    const trimmed = text.trim()
-    if (!trimmed) return
-
-    const userMsg: ChatMessage = {
-      id: nextId(),
-      role: 'user',
-      text: trimmed,
-      timestamp: Date.now(),
+  const clearTimeout_ = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
     }
+  }, [])
 
-    setMessages((prev) => [...prev, userMsg])
-    setIsTyping(true)
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      const msg = event.data
+      if (msg.type === 'chatResponse') {
+        clearTimeout_()
+        setIsTyping(false)
+        const reply: ChatMessage = {
+          id: nextId(),
+          role: 'assistant',
+          text: msg.text,
+          timestamp: Date.now(),
+        }
+        setMessages((prev) => [...prev, reply])
+      }
+    }
+    window.addEventListener('message', handler)
+    return () => {
+      window.removeEventListener('message', handler)
+      clearTimeout_()
+    }
+  }, [clearTimeout_])
 
-    if (typingTimer.current) clearTimeout(typingTimer.current)
+  const sendMessage = useCallback(
+    (text: string) => {
+      const trimmed = text.trim()
+      if (!trimmed) return
 
-    typingTimer.current = setTimeout(() => {
-      const reply: ChatMessage = {
+      const userMsg: ChatMessage = {
         id: nextId(),
-        role: 'assistant',
-        text: `Echo: "${trimmed}"\n\nBackend chat integration is next on the roadmap! I'll be able to answer questions about your project, code index, and pipeline phases.`,
+        role: 'user',
+        text: trimmed,
         timestamp: Date.now(),
       }
-      setMessages((prev) => [...prev, reply])
-      setIsTyping(false)
-    }, 1200)
-  }, [])
+
+      setMessages((prev) => [...prev, userMsg])
+
+      if (!vscode) {
+        const fallback: ChatMessage = {
+          id: nextId(),
+          role: 'assistant',
+          text: 'AI assistant is only available when running inside VS Code with GitHub Copilot enabled.',
+          timestamp: Date.now(),
+        }
+        setMessages((prev) => [...prev, fallback])
+        return
+      }
+
+      setIsTyping(true)
+      vscode.postMessage({ type: 'chatMessage', text: trimmed, phase })
+
+      clearTimeout_()
+      timeoutRef.current = setTimeout(() => {
+        setIsTyping(false)
+        const timeoutMsg: ChatMessage = {
+          id: nextId(),
+          role: 'assistant',
+          text: 'No response received. Try again — check that GitHub Copilot is signed in and your workspace has a .req-gath-sys directory initialized.',
+          timestamp: Date.now(),
+        }
+        setMessages((prev) => [...prev, timeoutMsg])
+      }, TIMEOUT_MS)
+    },
+    [phase, clearTimeout_]
+  )
 
   const clearMessages = useCallback(() => {
-    if (typingTimer.current) clearTimeout(typingTimer.current)
+    clearTimeout_()
     setIsTyping(false)
     setMessages([WELCOME])
-  }, [])
+  }, [clearTimeout_])
 
   return {
     isOpen,

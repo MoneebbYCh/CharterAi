@@ -4,93 +4,23 @@
   "root_path": "c:\\Projects\\Req-Gath-Sys",
   "graph_build_freshness": {
     "strategy": "git",
-    "generated_at": "2026-06-08T13:20:55.359Z",
-    "generated_ms": 1780924855359,
+    "generated_at": "2026-06-09T08:21:10.254Z",
+    "generated_ms": 1780993270254,
     "git": {
-      "head_sha": "cabdeacdd460c1dfebc35e1b15c073a00bf1ccec",
+      "head_sha": "074e90a8ef94941872688a20880f54fb5fede4a4",
       "dirty_files": [
-        "ARCHITECTURE.md",
-        "extension/codeIndexer.ts",
+        "extension/chatAgent.ts",
         "extension/extension.ts",
-        "extension/formStateManager.ts",
-        "extension/pdfExportHandler.ts",
         "extension/protocol.ts",
         "src/App.tsx",
-        "src/components/chat/ChatPanel.tsx",
-        "src/components/chat/ChatToggleButton.tsx",
-        "src/components/layout/CRTMonitor.tsx",
-        "src/components/layout/PipelineChrome.tsx",
-        "src/components/prd-sections/PrdOverview.tsx",
-        "src/components/prd-sections/PrdSection1-4.tsx",
-        "src/components/prd-sections/PrdSection5-8.tsx",
-        "src/components/prd-sections/PrdSidebar.tsx",
-        "src/components/project-charter/PhaseOverview.tsx",
-        "src/components/project-charter/PhaseSidebar.tsx",
-        "src/components/sections/Section1-3.tsx",
-        "src/components/sections/Section4-8.tsx",
-        "src/data/formDefaults.ts",
-        "src/data/optionDefaults.ts",
-        "src/data/phases.ts",
-        "src/data/prdFormDefaults.ts",
-        "src/hooks/useChat.ts",
-        "src/hooks/useCodeIndex.ts",
-        "src/hooks/useCustomOptions.ts",
-        "src/hooks/useFormState.ts",
-        "src/hooks/usePrdFormState.ts",
-        "src/hooks/useViewState.ts",
-        "src/pages/HomePage.tsx",
-        "src/pages/PhasePlaceholderPage.tsx",
-        "src/pages/PrdCreationPage.tsx",
-        "src/pages/ProjectCharterPage.tsx",
-        "src/types/form.ts",
-        "src/types/prdForm.ts",
-        "src/utils/pdfExport.ts",
-        "src/utils/prdValidation.ts",
-        "src/utils/validation.ts",
-        "src/utils/vscodeApi.ts",
-        "vite.config.ts"
+        "src/hooks/useChat.ts"
       ],
       "dirty_file_fingerprints": {
-        "ARCHITECTURE.md": "df3b39166dc46d3406546cbf98d780b0c8de8dba4bc32d51fba0ba59538774b3",
-        "extension/codeIndexer.ts": "c74cf51e3da04e39aa486debf9dbf278f99336cf80b0df1cc67d56c89fcf60eb",
-        "extension/extension.ts": "ffb8959bb44a2375a538b4ad5ea856e0673ccbc3c0eaa7c65f2980913299c86c",
-        "extension/formStateManager.ts": "2500b0f86ea1625859f59e86fa8e69d7d437ad03b3ed73557c5fbbcee766ec39",
-        "extension/pdfExportHandler.ts": "2e3bcd8fdc81b0589415bfbc9dd34a534a42b5bbebfeaaa19db6b3a54f531f3c",
-        "extension/protocol.ts": "0fa09d208f2a07b7146262becd3c960109f4cc5a26e7a6a47e347160705a4648",
-        "src/App.tsx": "17ade3646cf3ae17228465cebfac71ed7780ddad6bccb6795559574c9df79e74",
-        "src/components/chat/ChatPanel.tsx": "0144b73ae6ccdb90f63f0755d928edc55f5a0a90ec16101daa9279a444047dac",
-        "src/components/chat/ChatToggleButton.tsx": "dad82e975598ffb877823fa7d04131678764ad5b07f1ac075b8f5b6fe61430c1",
-        "src/components/layout/CRTMonitor.tsx": "db1817afbff7e935fdf19232213e50fb0a145220d4279a6fe319c2e9c92cf574",
-        "src/components/layout/PipelineChrome.tsx": "db532cf5433f797ff7891b8a0d10bd07d8d177afceb8684bb098a40b93c6b8e3",
-        "src/components/prd-sections/PrdOverview.tsx": "1a0e0bca3af13e6e61eda3da62e8abb932c71183779c301cb158ad106f61cbf0",
-        "src/components/prd-sections/PrdSection1-4.tsx": "02fe489b094a6fd71bb09ca45f404ad787599142c60d95a3c609dafd589e2844",
-        "src/components/prd-sections/PrdSection5-8.tsx": "67ebb8a79495e07c34d8a91a63c7d3b65e9da7af0fed8d9ef776e54e8085d647",
-        "src/components/prd-sections/PrdSidebar.tsx": "23718d93f53495637d0fc6d103de667be127471ab2cd6ababe07e5c41063a283",
-        "src/components/project-charter/PhaseOverview.tsx": "3d171b0f810229857a7c5c61fee07535a1dcc22b93dfab2af9a9fb1f5ae39c0a",
-        "src/components/project-charter/PhaseSidebar.tsx": "c9de243ac1c03b18c5782f52f95ea4e457599576c61a7bb44d5e5ee524c9c15e",
-        "src/components/sections/Section1-3.tsx": "f7dbe5f3aeb40864f5b266cd7475688a51e867e6c9b8f3c692de276f4efe6948",
-        "src/components/sections/Section4-8.tsx": "3d9793555f3d043cc868b4044df657b3eb831b001fca2cb0cc4518bed40b7b56",
-        "src/data/formDefaults.ts": "977223476abdf0e179dbcca1b9715d6af0a49a4d26301d962598f23fa44895a1",
-        "src/data/optionDefaults.ts": "18c5811cf5550c42e4af993139f489ec27567270b54971ab3b77b772be2630cb",
-        "src/data/phases.ts": "c03437468bf0bbc2f8d669ebbe1b310d2531d1dbec1be82cecd396667070b5f4",
-        "src/data/prdFormDefaults.ts": "3eb31b71494cb9fea4ffe81d0b37680755a759bf871985be8ef416792e5ec7fd",
-        "src/hooks/useChat.ts": "228f9ba2068ed2ba33e9279e8067368aee25b1ce4645afad06caf25fa20e58ab",
-        "src/hooks/useCodeIndex.ts": "73b7fce9fef75e2b2b53bed6eb07eafedbc1b566b9d30920b15c1edc082f53fc",
-        "src/hooks/useCustomOptions.ts": "b6de43bb180ee7b5d2267f4e7ab0563f375c63cdc3ea07c7fe989eed8340fed2",
-        "src/hooks/useFormState.ts": "359cb7528414984d000a5e3ed5015b56f564117eff047d60770059d3e270d4b4",
-        "src/hooks/usePrdFormState.ts": "515a8f10e8ea18a19ff12fbbf296b2d46d90809244a455d514a5a6daaed462b6",
-        "src/hooks/useViewState.ts": "038a029ba59610e1f97545d5c2a31a38330f27d7acee135f4b22542069cefe61",
-        "src/pages/HomePage.tsx": "933fc7aee130f2604a4c63b0d8b827f04a5ee4690e6fddf5d1da2539ed868818",
-        "src/pages/PhasePlaceholderPage.tsx": "11a9564572311965d84efa17c5f19c20a6bce90099a3edb6851883ddbb80fc07",
-        "src/pages/PrdCreationPage.tsx": "6a693fb1aeca709509c7f3a26cf8d823f2a1a972e7a25df56b55bc57f436e408",
-        "src/pages/ProjectCharterPage.tsx": "8e4de601cb922dfaf4199ea4c6684fdfd2d74ba9ee0af9d4e5beff59d0b7a6e2",
-        "src/types/form.ts": "cd6298cf6ae27825c3783c107d0ca4a3fc7545a9a89f4a9587768d8e076b28c8",
-        "src/types/prdForm.ts": "78aa0d1123db7d16f3860a915a2cbe1e1f984f34665fed16191eb9f541c28193",
-        "src/utils/pdfExport.ts": "39667535919e713551dc2646639606e91f193fe279bce99e78e87987b94ed0ac",
-        "src/utils/prdValidation.ts": "3521774ff5e7e34b59383f67cb9c1f90d62a48b61bbd655a96771bc528113dbb",
-        "src/utils/validation.ts": "53a3d5cb40659838c28d0b04fdb9fe41c742fe439bd4c5586a5283f629e3c06e",
-        "src/utils/vscodeApi.ts": "cbf08b0b8aa471c4f3ec069d758d717db80a6bb5f7a0ca3d42e0c54d34a37db9",
-        "vite.config.ts": "3aa8c413e3124da7d5adaacf02928390190e821e8a4794f124f9a2f3d68c9ec4"
+        "extension/chatAgent.ts": "087dd274a03270c6c39b04e929b5ed47ec0325914e4616f122ac2a9f53cfc011",
+        "extension/extension.ts": "9f54dee3b36f3208360f99e3743f7edfd95d5de5ba80e7ebd11b58114b71cc75",
+        "extension/protocol.ts": "3d3e67544b32107ed4ddadf05c1f6f7defb86a60a27de23d1df5a04484bbabb8",
+        "src/App.tsx": "8d3b9c8abafcc40aeec47ee3b697cc27b7b13727a591950281bc5092fbb12d52",
+        "src/hooks/useChat.ts": "323c763e705e06f7bcbc1dc2ad665f81496a2309fdaf2841797ab365c9e73aa7"
       }
     }
   },
@@ -112,6 +42,113 @@
         }
       ],
       "community": 58
+    },
+    {
+      "id": "chatagent",
+      "label": "chatAgent.ts",
+      "file_type": "code",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+      "source_location": "L1",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+          "source_location": "L1"
+        }
+      ],
+      "community": 2
+    },
+    {
+      "id": "chatagent_chatresult",
+      "label": "ChatResult",
+      "file_type": "code",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+      "source_location": "L4-L7",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+          "source_location": "L4"
+        }
+      ],
+      "snippet": "export interface ChatResult {\n  message: string\n  formUpdated: boolean\n}",
+      "community": 2
+    },
+    {
+      "id": "chatagent_getfieldguide",
+      "label": "getFieldGuide()",
+      "file_type": "code",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+      "source_location": "L157-L161",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+          "source_location": "L157"
+        }
+      ],
+      "snippet": "function getFieldGuide(phase: string): string {\n  if (phase === 'project-charter') return CHARTER_GUIDE\n  if (phase === 'prd') return PRD_GUIDE\n  return ''\n}",
+      "community": 2
+    },
+    {
+      "id": "chatagent_processchatmessage",
+      "label": "processChatMessage()",
+      "file_type": "code",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+      "source_location": "L163-L315",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+          "source_location": "L163"
+        }
+      ],
+      "snippet": "export async function processChatMessage(\n  text: string,\n  phase: string\n): Promise<ChatResult> {\n  let formData: unknown = null\n  let phaseName = 'general project'\n\n  if (phase === 'project-charter') {\n    formData = await loadCharter()\n    phaseName = 'Project Charter'\n  } else if (phase === 'prd') {\n    const result = await loadPrd()\n    formData = result.prd\n    phaseName = 'PRD'\n  }\n\n  const fieldGuide = getFieldGuide(phase)\n  const formJson = formData\n    ? JSON.stringify(formData, null, 2)\n    : 'No form data yet.'\n\n  const systemPrompt = 'You are an AI assistant for Req-Gath-Sys, a requirements gathering system. Be helpful and concise.'\n\n  let userMsgText: string\n  if (fieldGuide) {",
+      "community": 2
+    },
+    {
+      "id": "chatagent_parseresponse",
+      "label": "parseResponse()",
+      "file_type": "code",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+      "source_location": "L317-L341",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+          "source_location": "L317"
+        }
+      ],
+      "snippet": "function parseResponse(\n  text: string\n): { replyText: string; updates: Record<string, any> | null } {\n  const trimmed = text.trim()\n  if (!trimmed) return { replyText: 'No response.', updates: null }\n\n  // Check if the entire response is a JSON object with message+updates\n  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {\n    try {\n      const parsed = JSON.parse(trimmed)\n      if (typeof parsed.message === 'string') {\n        return {\n          replyText: parsed.message,\n          updates:\n            parsed.updates && typeof parsed.updates === 'object'\n              ? parsed.updates\n              : null,\n        }\n      }\n    } catch {}\n  }\n\n  // Return raw text — model is just chatting\n  return { replyText: trimmed, updates: null }\n}",
+      "community": 2
+    },
+    {
+      "id": "chatagent_deepmerge",
+      "label": "deepMerge()",
+      "file_type": "code",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+      "source_location": "L343-L364",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+          "source_location": "L343"
+        }
+      ],
+      "snippet": "function deepMerge(\n  target: Record<string, any>,\n  updates: Record<string, any>\n): void {\n  for (const [path, value] of Object.entries(updates)) {\n    const keys = path.split('.')\n    let current = target\n    for (let i = 0; i < keys.length - 1; i++) {\n      if (current[keys[i]] === undefined || current[keys[i]] === null) {\n        current[keys[i]] = {}\n      }\n      if (\n        typeof current[keys[i]] !== 'object' ||\n        Array.isArray(current[keys[i]])\n      ) {\n        current[keys[i]] = {}\n      }\n      current = current[keys[i]]\n    }\n    current[keys[keys.length - 1]] = value\n  }\n}",
+      "community": 2
     },
     {
       "id": "codeindexer",
@@ -800,14 +837,14 @@
       "label": "activate()",
       "file_type": "code",
       "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-      "source_location": "L9-L184",
+      "source_location": "L10-L208",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-          "source_location": "L9"
+          "source_location": "L10"
         }
       ],
       "snippet": "export function activate(context: vscode.ExtensionContext) {\n  let panel: vscode.WebviewPanel | undefined\n\n  function getHtml(webview: vscode.Webview): string {\n    const distPath = path.join(context.extensionPath, 'dist', 'index.html')\n    let html = fs.readFileSync(distPath, 'utf8')\n\n    const rootUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist'))\n\n    html = html.replace(/(src|href)=[\"']\\.\\/assets\\//g, `$1=\"${rootUri}/assets/`)\n\n    const csp = [\n      `default-src 'none'`,\n      `style-src ${webview.cspSource} 'unsafe-inline' https://fonts.googleapis.com`,\n      `font-src ${webview.cspSource} https://fonts.gstatic.com`,\n      `script-src ${webview.cspSource}`,\n      `img-src ${webview.cspSource} data:`,\n    ].join('; ')\n\n    html = html.replace('<head>', `<head><meta http-equiv=\"Content-Security-Policy\" content=\"${csp}\">`)\n\n    return html\n  }\n\n  function postMessage(msg: ExtensionToWebviewMessage): void {",
@@ -818,14 +855,14 @@
       "label": "getHtml()",
       "file_type": "code",
       "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-      "source_location": "L12-L31",
+      "source_location": "L13-L32",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-          "source_location": "L12"
+          "source_location": "L13"
         }
       ],
       "snippet": "function getHtml(webview: vscode.Webview): string {\n    const distPath = path.join(context.extensionPath, 'dist', 'index.html')\n    let html = fs.readFileSync(distPath, 'utf8')\n\n    const rootUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist'))\n\n    html = html.replace(/(src|href)=[\"']\\.\\/assets\\//g, `$1=\"${rootUri}/assets/`)\n\n    const csp = [\n      `default-src 'none'`,\n      `style-src ${webview.cspSource} 'unsafe-inline' https://fonts.googleapis.com`,\n      `font-src ${webview.cspSource} https://fonts.gstatic.com`,\n      `script-src ${webview.cspSource}`,\n      `img-src ${webview.cspSource} data:`,\n    ].join('; ')\n\n    html = html.replace('<head>', `<head><meta http-equiv=\"Content-Security-Policy\" content=\"${csp}\">`)\n\n    return html\n  }",
@@ -836,14 +873,14 @@
       "label": "postMessage()",
       "file_type": "code",
       "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-      "source_location": "L33-L35",
+      "source_location": "L34-L36",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-          "source_location": "L33"
+          "source_location": "L34"
         }
       ],
       "snippet": "function postMessage(msg: ExtensionToWebviewMessage): void {\n    panel?.webview.postMessage(msg)\n  }",
@@ -854,14 +891,14 @@
       "label": "handleMessage()",
       "file_type": "code",
       "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-      "source_location": "L37-L116",
+      "source_location": "L38-L140",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-          "source_location": "L37"
+          "source_location": "L38"
         }
       ],
       "snippet": "async function handleMessage(msg: WebviewToExtensionMessage): Promise<void> {\n    switch (msg.type) {\n      case 'loadCharter': {\n        const data = await loadCharter()\n        postMessage({ type: 'loadCharter', data })\n        break\n      }\n      case 'loadPrd': {\n        const { prd, charter } = await loadPrd()\n        postMessage({ type: 'loadPrd', data: prd, charterData: charter })\n        break\n      }\n      case 'saveCharter': {\n        await saveCharter(msg.data)\n        break\n      }\n      case 'savePrd': {\n        await savePrd(msg.data)\n        break\n      }\n      case 'loadCustomOptions': {\n        const data = await loadCustomOptions()\n        postMessage({ type: 'loadCustomOptions', data: data ?? { strings: {}, choices: {} } })\n        break\n      }",
@@ -872,14 +909,14 @@
       "label": "workspaceRoot()",
       "file_type": "code",
       "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-      "source_location": "L118-L122",
+      "source_location": "L142-L146",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-          "source_location": "L118"
+          "source_location": "L142"
         }
       ],
       "snippet": "function workspaceRoot(): string | null {\n    const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath\n    if (folder) return folder\n    return context.extensionPath\n  }",
@@ -890,14 +927,14 @@
       "label": "deactivate()",
       "file_type": "code",
       "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-      "source_location": "L186",
+      "source_location": "L210",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-          "source_location": "L186"
+          "source_location": "L210"
         }
       ],
       "snippet": "export function deactivate() {}",
@@ -1274,9 +1311,9 @@
           "source_location": "L12"
         }
       ],
-      "snippet": "function App() {\n  const { view, navigate, goHome } = useViewState()\n  const chat = useChat()\n\n  const renderPage = () => {\n    switch (view.page) {\n      case 'home':\n        return <HomePage onNavigate={navigate} />\n      case 'project-charter':\n        return <ProjectCharterPage onNavigate={navigate} goHome={goHome} />\n      case 'prd':\n        return <PrdCreationPage onNavigate={navigate} goHome={goHome} />\n      case 'placeholder': {\n        const phase = PHASES.find((p) => p.id === view.phaseId)\n        if (!phase) return <HomePage onNavigate={navigate} />\n        return <PhasePlaceholderPage phase={phase} onNavigate={navigate} />\n      }\n      default:\n        return <HomePage onNavigate={navigate} />\n    }\n  }\n\n  return (\n    <CRTMonitor>\n      {renderPage()}",
+      "snippet": "function App() {\n  const { view, navigate, goHome } = useViewState()\n  const chat = useChat(view.page)\n\n  const renderPage = () => {\n    switch (view.page) {\n      case 'home':\n        return <HomePage onNavigate={navigate} />\n      case 'project-charter':\n        return <ProjectCharterPage onNavigate={navigate} goHome={goHome} />\n      case 'prd':\n        return <PrdCreationPage onNavigate={navigate} goHome={goHome} />\n      case 'placeholder': {\n        const phase = PHASES.find((p) => p.id === view.phaseId)\n        if (!phase) return <HomePage onNavigate={navigate} />\n        return <PhasePlaceholderPage phase={phase} onNavigate={navigate} />\n      }\n      default:\n        return <HomePage onNavigate={navigate} />\n    }\n  }\n\n  return (\n    <CRTMonitor>\n      {renderPage()}",
       "node_kind": "component",
-      "community": 28
+      "community": 29
     },
     {
       "id": "app_app_renderpage",
@@ -1294,7 +1331,7 @@
         }
       ],
       "snippet": "renderPage = () => {\n    switch (view.page) {\n      case 'home':\n        return <HomePage onNavigate={navigate} />\n      case 'project-charter':\n        return <ProjectCharterPage onNavigate={navigate} goHome={goHome} />\n      case 'prd':\n        return <PrdCreationPage onNavigate={navigate} goHome={goHome} />\n      case 'placeholder': {\n        const phase = PHASES.find((p) => p.id === view.phaseId)\n        if (!phase) return <HomePage onNavigate={navigate} />\n        return <PhasePlaceholderPage phase={phase} onNavigate={navigate} />\n      }\n      default:\n        return <HomePage onNavigate={navigate} />\n    }\n  }",
-      "community": 28
+      "community": 29
     },
     {
       "id": "autoresizetextarea",
@@ -1877,7 +1914,7 @@
           "source_location": "L1"
         }
       ],
-      "community": 29
+      "community": 30
     },
     {
       "id": "chatpanel_chatpanelprops",
@@ -1895,7 +1932,7 @@
         }
       ],
       "snippet": "interface ChatPanelProps {\n  isOpen: boolean\n  onClose: () => void\n  messages: ChatMessage[]\n  onSend: (text: string) => void\n  onClear: () => void\n  isTyping: boolean\n}",
-      "community": 29
+      "community": 30
     },
     {
       "id": "chatpanel_chatpanel",
@@ -2003,7 +2040,7 @@
           "source_location": "L1"
         }
       ],
-      "community": 30
+      "community": 31
     },
     {
       "id": "crtmonitor_crtmonitorprops",
@@ -2021,7 +2058,7 @@
         }
       ],
       "snippet": "interface CRTMonitorProps {\n  children: ReactNode\n}",
-      "community": 30
+      "community": 31
     },
     {
       "id": "crtmonitor_crtmonitor",
@@ -2040,7 +2077,7 @@
       ],
       "snippet": "export function CRTMonitor({ children }: CRTMonitorProps) {\n  return (\n    <>\n      <div className=\"crt-scanlines\" />\n      <div className=\"crt-glow\" />\n      <div className=\"crt-reflex\" />\n      {children}\n    </>\n  )\n}",
       "node_kind": "component",
-      "community": 30
+      "community": 31
     },
     {
       "id": "pipelinechrome",
@@ -3075,7 +3112,7 @@
           "source_location": "L1"
         }
       ],
-      "community": 32
+      "community": 33
     },
     {
       "id": "phases_phase",
@@ -3093,7 +3130,7 @@
         }
       ],
       "snippet": "export interface Phase {\n  id: string\n  number: number\n  title: string\n  subtitle: string\n  description: string\n  path: string\n  active: boolean\n}",
-      "community": 32
+      "community": 33
     },
     {
       "id": "phases_getphasebyid",
@@ -3111,7 +3148,7 @@
         }
       ],
       "snippet": "export function getPhaseById(id: string): Phase | undefined {\n  return PHASES.find((p) => p.id === id)\n}",
-      "community": 32
+      "community": 33
     },
     {
       "id": "prdformdefaults",
@@ -3163,61 +3200,79 @@
           "source_location": "L1"
         }
       ],
-      "community": 33
+      "community": 28
     },
     {
       "id": "usechat_chatmessage",
       "label": "ChatMessage",
       "file_type": "code",
       "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
-      "source_location": "L3-L8",
+      "source_location": "L4-L9",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
-          "source_location": "L3"
+          "source_location": "L4"
         }
       ],
       "snippet": "export interface ChatMessage {\n  id: string\n  role: 'user' | 'assistant'\n  text: string\n  timestamp: number\n}",
-      "community": 29
+      "community": 30
     },
     {
       "id": "usechat_nextid",
       "label": "nextId()",
       "file_type": "code",
       "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
-      "source_location": "L11",
+      "source_location": "L14-L16",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
-          "source_location": "L11"
+          "source_location": "L14"
         }
       ],
-      "snippet": "function nextId(): string { return `chat-${++msgId}` }",
-      "community": 33
+      "snippet": "function nextId(): string {\n  return `chat-${++msgId}`\n}",
+      "community": 28
     },
     {
       "id": "usechat_usechat",
       "label": "useChat()",
       "file_type": "code",
       "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
-      "source_location": "L20-L77",
+      "source_location": "L27-L128",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
-          "source_location": "L20"
+          "source_location": "L27"
         }
       ],
-      "snippet": "export function useChat() {\n  const [isOpen, setIsOpen] = useState(false)\n  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME])\n  const [isTyping, setIsTyping] = useState(false)\n  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)\n\n  const toggleOpen = useCallback(() => {\n    setIsOpen((prev) => !prev)\n  }, [])\n\n  const close = useCallback(() => {\n    setIsOpen(false)\n  }, [])\n\n  const sendMessage = useCallback((text: string) => {\n    const trimmed = text.trim()\n    if (!trimmed) return\n\n    const userMsg: ChatMessage = {\n      id: nextId(),\n      role: 'user',\n      text: trimmed,\n      timestamp: Date.now(),\n    }",
-      "community": 33
+      "snippet": "export function useChat(phase: string) {\n  const [isOpen, setIsOpen] = useState(false)\n  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME])\n  const [isTyping, setIsTyping] = useState(false)\n  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)\n\n  const toggleOpen = useCallback(() => {\n    setIsOpen((prev) => !prev)\n  }, [])\n\n  const close = useCallback(() => {\n    setIsOpen(false)\n  }, [])\n\n  const clearTimeout_ = useCallback(() => {\n    if (timeoutRef.current) {\n      clearTimeout(timeoutRef.current)\n      timeoutRef.current = null\n    }\n  }, [])\n\n  useEffect(() => {\n    const handler = (event: MessageEvent) => {\n      const msg = event.data\n      if (msg.type === 'chatResponse') {",
+      "community": 28
+    },
+    {
+      "id": "usechat_usechat_handler",
+      "label": "handler()",
+      "file_type": "code",
+      "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
+      "source_location": "L49-L62",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
+          "source_location": "L49"
+        }
+      ],
+      "snippet": "handler = (event: MessageEvent) => {\n      const msg = event.data\n      if (msg.type === 'chatResponse') {\n        clearTimeout_()\n        setIsTyping(false)\n        const reply: ChatMessage = {\n          id: nextId(),\n          role: 'assistant',\n          text: msg.text,\n          timestamp: Date.now(),\n        }\n        setMessages((prev) => [...prev, reply])\n      }\n    }",
+      "community": 28
     },
     {
       "id": "usecodeindex",
@@ -3643,7 +3698,7 @@
           "source_location": "L1"
         }
       ],
-      "community": 28
+      "community": 29
     },
     {
       "id": "homepage",
@@ -3794,7 +3849,7 @@
           "source_location": "L1"
         }
       ],
-      "community": 31
+      "community": 32
     },
     {
       "id": "phaseplaceholderpage_props",
@@ -3812,7 +3867,7 @@
         }
       ],
       "snippet": "interface Props {\n  phase: Phase\n  onNavigate: (view: View) => void\n}",
-      "community": 31
+      "community": 32
     },
     {
       "id": "phaseplaceholderpage_phaseplaceholderpage",
@@ -3831,7 +3886,7 @@
       ],
       "snippet": "export function PhasePlaceholderPage({ phase, onNavigate }: Props) {\n  return (\n    <div className=\"placeholder-layout\">\n      <div className=\"placeholder-window mac-window\">\n        <div className=\"mac-titlebar\">\n          <span className=\"mac-titlebar-text\">\n            Phase {phase.number} — {phase.title}\n          </span>\n          <div className=\"mac-titlebar-stripes\" />\n        </div>\n        <div className=\"placeholder-content\">\n          <button\n            type=\"button\"\n            onClick={() => onNavigate({ page: 'home' })}\n            className=\"back-link\"\n          >\n            ← All Phases\n          </button>\n          <div className=\"placeholder-icon\">🚧</div>\n          <h1>{phase.title}</h1>\n          <p className=\"placeholder-subtitle\">{phase.subtitle}</p>\n          <p className=\"placeholder-desc\">{phase.description}</p>\n          <div className=\"coming-soon-badge mac-inset\">\n            Coming Soon\n          </div>",
       "node_kind": "component",
-      "community": 31
+      "community": 32
     },
     {
       "id": "c_projects_req_gath_sys_src_nextjs_route_phaseplaceholderpage",
@@ -6763,6 +6818,159 @@
   ],
   "links": [
     {
+      "source": "chatagent",
+      "target": "formstatemanager",
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+      "source_location": "L2",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+          "source_location": "L2"
+        }
+      ]
+    },
+    {
+      "source": "chatagent",
+      "target": "chatagent_chatresult",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+      "source_location": "L4",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+          "source_location": "L4"
+        }
+      ]
+    },
+    {
+      "source": "chatagent",
+      "target": "chatagent_getfieldguide",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+      "source_location": "L157",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+          "source_location": "L157"
+        }
+      ]
+    },
+    {
+      "source": "chatagent",
+      "target": "chatagent_processchatmessage",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+      "source_location": "L163",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+          "source_location": "L163"
+        }
+      ]
+    },
+    {
+      "source": "chatagent",
+      "target": "chatagent_parseresponse",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+      "source_location": "L317",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+          "source_location": "L317"
+        }
+      ]
+    },
+    {
+      "source": "chatagent",
+      "target": "chatagent_deepmerge",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+      "source_location": "L343",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+          "source_location": "L343"
+        }
+      ]
+    },
+    {
+      "source": "chatagent_processchatmessage",
+      "target": "chatagent_getfieldguide",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+      "source_location": "L179",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+          "source_location": "L179"
+        }
+      ]
+    },
+    {
+      "source": "chatagent_processchatmessage",
+      "target": "chatagent_parseresponse",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+      "source_location": "L272",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+          "source_location": "L272"
+        }
+      ]
+    },
+    {
+      "source": "chatagent_processchatmessage",
+      "target": "chatagent_deepmerge",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+      "source_location": "L281",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/chatAgent.ts",
+          "source_location": "L281"
+        }
+      ]
+    },
+    {
       "source": "codeindexer",
       "target": "codeindexer_fileentry",
       "relation": "contains",
@@ -7767,7 +7975,7 @@
     },
     {
       "source": "extension",
-      "target": "protocol",
+      "target": "chatagent",
       "relation": "imports_from",
       "confidence": "EXTRACTED",
       "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
@@ -7784,18 +7992,35 @@
     },
     {
       "source": "extension",
-      "target": "extension_activate",
-      "relation": "contains",
+      "target": "protocol",
+      "relation": "imports_from",
       "confidence": "EXTRACTED",
       "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-      "source_location": "L9",
+      "source_location": "L8",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-          "source_location": "L9"
+          "source_location": "L8"
+        }
+      ]
+    },
+    {
+      "source": "extension",
+      "target": "extension_activate",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
+      "source_location": "L10",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
+          "source_location": "L10"
         }
       ]
     },
@@ -7805,14 +8030,14 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-      "source_location": "L12",
+      "source_location": "L13",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-          "source_location": "L12"
+          "source_location": "L13"
         }
       ]
     },
@@ -7822,14 +8047,14 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-      "source_location": "L33",
+      "source_location": "L34",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-          "source_location": "L33"
+          "source_location": "L34"
         }
       ]
     },
@@ -7839,14 +8064,14 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-      "source_location": "L37",
+      "source_location": "L38",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-          "source_location": "L37"
+          "source_location": "L38"
         }
       ]
     },
@@ -7856,14 +8081,14 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-      "source_location": "L118",
+      "source_location": "L142",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-          "source_location": "L118"
+          "source_location": "L142"
         }
       ]
     },
@@ -7873,14 +8098,14 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-      "source_location": "L186",
+      "source_location": "L210",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-          "source_location": "L186"
+          "source_location": "L210"
         }
       ]
     },
@@ -7890,14 +8115,14 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-      "source_location": "L41",
+      "source_location": "L42",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-          "source_location": "L41"
+          "source_location": "L42"
         }
       ]
     },
@@ -7907,14 +8132,14 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-      "source_location": "L81",
+      "source_location": "L82",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/extension/extension.ts",
-          "source_location": "L81"
+          "source_location": "L82"
         }
       ]
     },
@@ -12408,18 +12633,35 @@
     },
     {
       "source": "usechat",
-      "target": "usechat_chatmessage",
-      "relation": "contains",
+      "target": "vscodeapi",
+      "relation": "imports_from",
       "confidence": "EXTRACTED",
       "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
-      "source_location": "L3",
+      "source_location": "L2",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
-          "source_location": "L3"
+          "source_location": "L2"
+        }
+      ]
+    },
+    {
+      "source": "usechat",
+      "target": "usechat_chatmessage",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
+      "source_location": "L4",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
+          "source_location": "L4"
         }
       ]
     },
@@ -12429,14 +12671,14 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
-      "source_location": "L11",
+      "source_location": "L14",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
-          "source_location": "L11"
+          "source_location": "L14"
         }
       ]
     },
@@ -12446,14 +12688,48 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
-      "source_location": "L20",
+      "source_location": "L27",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
-          "source_location": "L20"
+          "source_location": "L27"
+        }
+      ]
+    },
+    {
+      "source": "usechat_usechat",
+      "target": "usechat_usechat_handler",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
+      "source_location": "L49",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
+          "source_location": "L49"
+        }
+      ]
+    },
+    {
+      "source": "usechat_usechat_handler",
+      "target": "usechat_nextid",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
+      "source_location": "L55",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts",
+          "source_location": "L55"
         }
       ]
     },
@@ -18459,6 +18735,142 @@
       ]
     },
     {
+      "source": "chatagent",
+      "target": "formstatemanager_loadcharter",
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+      "source_location": "L2",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+          "source_location": "L2"
+        }
+      ]
+    },
+    {
+      "source": "chatagent",
+      "target": "formstatemanager_savecharter",
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+      "source_location": "L2",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+          "source_location": "L2"
+        }
+      ]
+    },
+    {
+      "source": "chatagent",
+      "target": "formstatemanager_loadprd",
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+      "source_location": "L2",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+          "source_location": "L2"
+        }
+      ]
+    },
+    {
+      "source": "chatagent",
+      "target": "formstatemanager_saveprd",
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+      "source_location": "L2",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+          "source_location": "L2"
+        }
+      ]
+    },
+    {
+      "source": "chatagent_processchatmessage",
+      "target": "formstatemanager_loadcharter",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+      "source_location": "L171",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+          "source_location": "L171"
+        }
+      ]
+    },
+    {
+      "source": "chatagent_processchatmessage",
+      "target": "formstatemanager_loadprd",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+      "source_location": "L174",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+          "source_location": "L174"
+        }
+      ]
+    },
+    {
+      "source": "chatagent_processchatmessage",
+      "target": "formstatemanager_savecharter",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+      "source_location": "L284",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+          "source_location": "L284"
+        }
+      ]
+    },
+    {
+      "source": "chatagent_processchatmessage",
+      "target": "formstatemanager_saveprd",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+      "source_location": "L286",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\chatAgent.ts",
+          "source_location": "L286"
+        }
+      ]
+    },
+    {
       "source": "extension",
       "target": "formstatemanager_loadcharter",
       "relation": "imports_from",
@@ -18612,19 +19024,36 @@
       ]
     },
     {
-      "source": "extension_activate_handlemessage",
-      "target": "formstatemanager_loadcharter",
-      "relation": "calls",
+      "source": "extension",
+      "target": "chatagent_processchatmessage",
+      "relation": "imports_from",
       "confidence": "EXTRACTED",
       "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-      "source_location": "L40",
+      "source_location": "L7",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-          "source_location": "L40"
+          "source_location": "L7"
+        }
+      ]
+    },
+    {
+      "source": "extension_activate_handlemessage",
+      "target": "formstatemanager_loadcharter",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
+      "source_location": "L41",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
+          "source_location": "L41"
         }
       ]
     },
@@ -18634,14 +19063,14 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-      "source_location": "L45",
+      "source_location": "L46",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-          "source_location": "L45"
+          "source_location": "L46"
         }
       ]
     },
@@ -18651,14 +19080,14 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-      "source_location": "L50",
+      "source_location": "L51",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-          "source_location": "L50"
+          "source_location": "L51"
         }
       ]
     },
@@ -18668,14 +19097,14 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-      "source_location": "L54",
+      "source_location": "L55",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-          "source_location": "L54"
+          "source_location": "L55"
         }
       ]
     },
@@ -18685,14 +19114,14 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-      "source_location": "L58",
+      "source_location": "L59",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-          "source_location": "L58"
+          "source_location": "L59"
         }
       ]
     },
@@ -18702,14 +19131,14 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-      "source_location": "L63",
+      "source_location": "L64",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-          "source_location": "L63"
+          "source_location": "L64"
         }
       ]
     },
@@ -18719,14 +19148,14 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-      "source_location": "L67",
+      "source_location": "L68",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-          "source_location": "L67"
+          "source_location": "L68"
         }
       ]
     },
@@ -18736,14 +19165,31 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-      "source_location": "L77",
+      "source_location": "L78",
       "layer": "base",
       "provenance": [
         {
           "capability_id": "builtin:extract:typescript",
           "stage": "extract",
           "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
-          "source_location": "L77"
+          "source_location": "L78"
+        }
+      ]
+    },
+    {
+      "source": "extension_activate_handlemessage",
+      "target": "chatagent_processchatmessage",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
+      "source_location": "L119",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:\\Projects\\Req-Gath-Sys\\extension\\extension.ts",
+          "source_location": "L119"
         }
       ]
     },
@@ -20839,6 +21285,23 @@
       ]
     },
     {
+      "source": "usechat",
+      "target": "vscodeapi_getvscodeapi",
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "c:\\Projects\\Req-Gath-Sys\\src\\hooks\\useChat.ts",
+      "source_location": "L2",
+      "layer": "base",
+      "provenance": [
+        {
+          "capability_id": "builtin:extract:typescript",
+          "stage": "extract",
+          "source_file": "c:\\Projects\\Req-Gath-Sys\\src\\hooks\\useChat.ts",
+          "source_location": "L2"
+        }
+      ]
+    },
+    {
       "source": "usecodeindex",
       "target": "vscodeapi_getvscodeapi",
       "relation": "imports_from",
@@ -22297,12 +22760,12 @@
     "25": "Extension Code Indexer — Build",
     "26": "Extension",
     "27": "Readme",
-    "28": "Src App",
-    "29": "Components Chat Panel",
-    "30": "Components Crt Monitor",
-    "31": "Pages Phase Placeholder Page",
-    "32": "Data Phases",
-    "33": "Hooks Use Chat",
+    "28": "Hooks Use Chat",
+    "29": "Src App",
+    "30": "Components Chat Panel",
+    "31": "Components Crt Monitor",
+    "32": "Pages Phase Placeholder Page",
+    "33": "Data Phases",
     "34": "Hooks Use Code Index",
     "35": "Utils Validation — All",
     "36": "Pages Home Page — Page",
@@ -22338,25 +22801,25 @@
       "id": "bridge_node:architecture_req_gath_sys_architecture_1",
       "kind": "bridge_node",
       "severity": "HIGH",
-      "score": 91620,
+      "score": 98808,
       "summary": "Req-Gath-Sys — Architecture bridges Architecture and Architecture — Flow, Architecture — Index, Architecture — Data.",
-      "why": "High betweenness centrality (22905.000) across 4 communities makes this node a likely dependency chokepoint."
+      "why": "High betweenness centrality (24702.000) across 4 communities makes this node a likely dependency chokepoint."
     },
     {
       "id": "bridge_node:codeindexer_codeindexer",
       "kind": "bridge_node",
       "severity": "HIGH",
-      "score": 73696.67,
+      "score": 75236.67,
       "summary": "CodeIndexer bridges Extension Code Indexer — Components and Extension Code Indexer, Extension Code Indexer — Build, Extension Code Indexer — Index, Extension Code Indexer — Cache, Extension Code Indexer — Finish, Extension Code Indexer — Collect, Extension Code Indexer — Classify, Extension Code Indexer — Create, Extension Form State Manager.",
-      "why": "High betweenness centrality (7369.667) across 10 communities makes this node a likely dependency chokepoint."
+      "why": "High betweenness centrality (7523.667) across 10 communities makes this node a likely dependency chokepoint."
     },
     {
       "id": "bridge_node:architecture_data_model_533",
       "kind": "bridge_node",
       "severity": "HIGH",
-      "score": 44852,
+      "score": 48236,
       "summary": "Data Model bridges Architecture — Data and Architecture.",
-      "why": "High betweenness centrality (22426.000) across 2 communities makes this node a likely dependency chokepoint."
+      "why": "High betweenness centrality (24118.000) across 2 communities makes this node a likely dependency chokepoint."
     },
     {
       "id": "cross_boundary_edge:App()->ChatToggleButton():renders",

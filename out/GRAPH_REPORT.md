@@ -1,34 +1,34 @@
-# Graph Report - c:\\Projects\\Req-Gath-Sys  (2026-06-08)
+# Graph Report - c:\\Projects\\Req-Gath-Sys  (2026-06-09)
 
 ## Corpus Check
-- Corpus is ~30,684 words - fits in a single context window. You may not need a graph.
+- Corpus is ~32,361 words - fits in a single context window. You may not need a graph.
 
 ## Summary
-- 370 nodes · 912 edges · 63 communities detected
+- 377 nodes · 936 edges · 63 communities detected
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
 - Token cost: 0 input · 0 output
 
 ## Structure Signals
-- Entity graph basis: 314 non-file, non-concept node(s)
+- Entity graph basis: 320 non-file, non-concept node(s)
 - Weakly connected components: 93
 - Singleton components: 79
 - Isolated nodes: 79
-- Largest component: 134 node(s) (43% of the entity graph basis)
+- Largest component: 136 node(s) (43% of the entity graph basis)
 - Low-cohesion communities: 0
 - Largest low-cohesion community: none on the entity graph basis
 
 ## Workspace Bridges
-1. `App\(\)` - connects `Components Chat Panel — Chat`, `Components Chat Toggle Button`, `Components Crt Monitor`, `Components Form Fields`, `Hooks Use Chat`, `Hooks Use View State`, `Pages Home Page`, `Pages Phase Placeholder Page`, `Pages Prd Creation Page`; home: `Src App`; degree 10; score 718.54
+1. `App\(\)` - connects `Components Chat Panel — Chat`, `Components Chat Toggle Button`, `Components Crt Monitor`, `Components Form Fields`, `Hooks Use Chat`, `Hooks Use View State`, `Pages Home Page`, `Pages Phase Placeholder Page`, `Pages Prd Creation Page`; home: `Src App`; degree 10; score 752.85
   source files: `c:/Projects/Req-Gath-Sys/src/App.tsx`, `c:/Projects/Req-Gath-Sys/src/components/chat/ChatPanel.tsx`, `c:/Projects/Req-Gath-Sys/src/components/chat/ChatToggleButton.tsx`, `c:/Projects/Req-Gath-Sys/src/components/layout/CRTMonitor.tsx`, `c:/Projects/Req-Gath-Sys/src/hooks/useChat.ts`, `c:/Projects/Req-Gath-Sys/src/hooks/useViewState.ts`, `c:/Projects/Req-Gath-Sys/src/pages/HomePage.tsx`, `c:/Projects/Req-Gath-Sys/src/pages/PhasePlaceholderPage.tsx`, `c:/Projects/Req-Gath-Sys/src/pages/PrdCreationPage.tsx`, `c:/Projects/Req-Gath-Sys/src/pages/ProjectCharterPage.tsx`
-2. `PrdCreationPage\(\)` - connects `Components Form Fields`, `Components Pipeline Chrome`, `Components Pipeline Chrome — Footer`, `Components Prd Section1 4`, `Components Prd Sidebar`, `Hooks Use Prd Form State`, `Src App`, `Utils Prd Validation — Prd`; home: `Pages Prd Creation Page`; degree 19; score 2379.74
+2. `PrdCreationPage\(\)` - connects `Components Form Fields`, `Components Pipeline Chrome`, `Components Pipeline Chrome — Footer`, `Components Prd Section1 4`, `Components Prd Sidebar`, `Hooks Use Prd Form State`, `Src App`, `Utils Prd Validation — Prd`; home: `Pages Prd Creation Page`; degree 19; score 2427.68
   source files: `c:/Projects/Req-Gath-Sys/src/App.tsx`, `c:/Projects/Req-Gath-Sys/src/components/layout/PipelineChrome.tsx`, `c:/Projects/Req-Gath-Sys/src/components/prd-sections/PrdOverview.tsx`, `c:/Projects/Req-Gath-Sys/src/components/prd-sections/PrdSection1-4.tsx`, `c:/Projects/Req-Gath-Sys/src/components/prd-sections/PrdSection5-8.tsx`, `c:/Projects/Req-Gath-Sys/src/components/prd-sections/PrdSidebar.tsx`, `c:/Projects/Req-Gath-Sys/src/hooks/usePrdFormState.ts`, `c:/Projects/Req-Gath-Sys/src/pages/PrdCreationPage.tsx`
-3. `CodeIndexer` - connects `Extension Code Indexer — Build`, `Extension Code Indexer — Cache`, `Extension Code Indexer — Classify`, `Extension Code Indexer — Collect`, `Extension Code Indexer — Create`, `Extension Code Indexer — Finish`, `Extension Code Indexer — Index`; home: `Extension Code Indexer — Components`; degree 20; score 7459.67
+3. `CodeIndexer` - connects `Extension Code Indexer — Build`, `Extension Code Indexer — Cache`, `Extension Code Indexer — Classify`, `Extension Code Indexer — Collect`, `Extension Code Indexer — Create`, `Extension Code Indexer — Finish`, `Extension Code Indexer — Index`; home: `Extension Code Indexer — Components`; degree 20; score 7613.67
   source files: `c:/Projects/Req-Gath-Sys/extension/codeIndexer.ts`
-4. `ProjectCharterPage\(\)` - connects `Components Pipeline Chrome`, `Components Pipeline Chrome — Footer`, `Components Use Form State`, `Pages Home Page`, `Pages PDF Export`, `Src App`; home: `Components Form Fields`; degree 24; score 2106.93
+4. `ProjectCharterPage\(\)` - connects `Components Pipeline Chrome`, `Components Pipeline Chrome — Footer`, `Components Use Form State`, `Pages Home Page`, `Pages PDF Export`, `Src App`; home: `Components Form Fields`; degree 24; score 2142.56
   source files: `c:/Projects/Req-Gath-Sys/src/App.tsx`, `c:/Projects/Req-Gath-Sys/src/components/layout/PipelineChrome.tsx`, `c:/Projects/Req-Gath-Sys/src/components/project-charter/PhaseOverview.tsx`, `c:/Projects/Req-Gath-Sys/src/components/project-charter/PhaseSidebar.tsx`, `c:/Projects/Req-Gath-Sys/src/components/sections/Section1-3.tsx`, `c:/Projects/Req-Gath-Sys/src/components/sections/Section4-8.tsx`, `c:/Projects/Req-Gath-Sys/src/hooks/useFormState.ts`, `c:/Projects/Req-Gath-Sys/src/pages/ProjectCharterPage.tsx`, `c:/Projects/Req-Gath-Sys/src/utils/validation.ts`
 5. `.buildIndex\(\)` - connects `Extension Code Indexer — Cache`, `Extension Code Indexer — Classify`, `Extension Code Indexer — Collect`, `Extension Code Indexer — Components`, `Extension Code Indexer — Create`, `Extension Code Indexer — Finish`; home: `Extension Code Indexer — Build`; degree 10; score 96.33
   source files: `c:/Projects/Req-Gath-Sys/extension/codeIndexer.ts`
-6. `Req-Gath-Sys — Architecture` - connects `Architecture — Data`, `Architecture — Flow`, `Architecture — Index`; home: `Architecture`; degree 9; score 22944
+6. `Req-Gath-Sys — Architecture` - connects `Architecture — Data`, `Architecture — Flow`, `Architecture — Index`; home: `Architecture`; degree 9; score 24741
   source files: `c:/Projects/Req-Gath-Sys/ARCHITECTURE.md`
 
 ## God Nodes
@@ -57,11 +57,11 @@
 
 ## Semantic Anomalies
 - **[HIGH] Bridge node** - Req-Gath-Sys — Architecture bridges Architecture and Architecture — Flow, Architecture — Index, Architecture — Data.
-  _High betweenness centrality \(22905.000\) across 4 communities makes this node a likely dependency chokepoint._
+  _High betweenness centrality \(24702.000\) across 4 communities makes this node a likely dependency chokepoint._
 - **[HIGH] Bridge node** - CodeIndexer bridges Extension Code Indexer — Components and Extension Code Indexer, Extension Code Indexer — Build, Extension Code Indexer — Index, Extension Code Indexer — Cache, Extension Code Indexer — Finish, Extension Code Indexer — Collect, Extension Code Indexer — Classify, Extension Code Indexer — Create, Extension Form State Manager.
-  _High betweenness centrality \(7369.667\) across 10 communities makes this node a likely dependency chokepoint._
+  _High betweenness centrality \(7523.667\) across 10 communities makes this node a likely dependency chokepoint._
 - **[HIGH] Bridge node** - Data Model bridges Architecture — Data and Architecture.
-  _High betweenness centrality \(22426.000\) across 2 communities makes this node a likely dependency chokepoint._
+  _High betweenness centrality \(24118.000\) across 2 communities makes this node a likely dependency chokepoint._
 - **[HIGH] Cross-boundary edge** - App\(\) → ChatToggleButton\(\) crosses graph boundaries in an unexpected way.
   _bridges separate communities_
 - **[HIGH] Cross-boundary edge** - App\(\) → CRTMonitor\(\) crosses graph boundaries in an unexpected way.
@@ -78,8 +78,8 @@ Cohesion (entity basis within full-graph community): 0.21
 Nodes (30): CharterPdfBuilder, .addPage\(\), .afterTable\(\), .applyRunningHeadersFooters\(\), .beginSection\(\), .beginSubsection\(\), .build\(\), .buildSection1\(\) (+22 more)
 
 ### Community 2 - "Extension Form State Manager"
-Cohesion (entity basis within full-graph community): 0.25
-Nodes (15): handleMessage\(\), deactivate\(\), ensureDir\(\), exportDir\(\), loadCharter\(\), loadCustomOptions\(\), loadPrd\(\), readJson\(\) (+7 more)
+Cohesion (entity basis within full-graph community): 0.18
+Nodes (20): ChatResult, deepMerge\(\), getFieldGuide\(\), parseResponse\(\), processChatMessage\(\), handleMessage\(\), deactivate\(\), ensureDir\(\) (+12 more)
 
 ### Community 3 - "Components Use Form State"
 Cohesion (entity basis within full-graph community): 0.09
@@ -181,29 +181,29 @@ Nodes (4): activate\(\), getHtml\(\), postMessage\(\), workspaceRoot\(\)
 Cohesion (entity basis within full-graph community): 0.67
 Nodes (3): Expanding the ESLint configuration, React Compiler, React + TypeScript + Vite
 
-### Community 28 - "Src App"
+### Community 28 - "Hooks Use Chat"
+Cohesion (entity basis within full-graph community): 0.67
+Nodes (3): nextId\(\), useChat\(\), handler\(\)
+
+### Community 29 - "Src App"
 Cohesion (entity basis within full-graph community): 1
 Nodes (2): App\(\), renderPage\(\)
 
-### Community 29 - "Components Chat Panel"
+### Community 30 - "Components Chat Panel"
 Cohesion (entity basis within full-graph community): 0
 Nodes (2): ChatPanelProps, ChatMessage
 
-### Community 30 - "Components Crt Monitor"
+### Community 31 - "Components Crt Monitor"
 Cohesion (entity basis within full-graph community): 0
 Nodes (2): CRTMonitor\(\), CRTMonitorProps
 
-### Community 31 - "Pages Phase Placeholder Page"
+### Community 32 - "Pages Phase Placeholder Page"
 Cohesion (entity basis within full-graph community): 0
 Nodes (2): PhasePlaceholderPage\(\), Props
 
-### Community 32 - "Data Phases"
+### Community 33 - "Data Phases"
 Cohesion (entity basis within full-graph community): 0
 Nodes (2): getPhaseById\(\), Phase
-
-### Community 33 - "Hooks Use Chat"
-Cohesion (entity basis within full-graph community): 0
-Nodes (2): nextId\(\), useChat\(\)
 
 ### Community 34 - "Hooks Use Code Index"
 Cohesion (entity basis within full-graph community): 0
@@ -322,7 +322,7 @@ Cohesion (entity basis within full-graph community): n/a
 Nodes (0): 
 
 ## Knowledge Gaps
-- **166 weakly connected node(s):** `FileEntry`, `TypeProperty`, `TypeEntry`, `ComponentEntry`, `IpcMessageEntry` (+161 more)
+- **169 weakly connected node(s):** `ChatResult`, `getFieldGuide\(\)`, `parseResponse\(\)`, `deepMerge\(\)`, `FileEntry` (+164 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **Thin community `Pages Home Page — Page`** (2 nodes): `page /HomePage`, `/HomePage`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
@@ -383,10 +383,10 @@ Nodes (0):
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does \`Req-Gath-Sys — Architecture\` connect \`Architecture\` to \`Architecture — Flow\`, \`Architecture — Index\`, \`Architecture — Data\`?**
-  _High betweenness centrality \(22905.000\) - this node is a cross-community bridge._
+  _High betweenness centrality \(24702.000\) - this node is a cross-community bridge._
 - **Why does \`Data Model\` connect \`Architecture — Data\` to \`Architecture\`?**
-  _High betweenness centrality \(22426.000\) - this node is a cross-community bridge._
+  _High betweenness centrality \(24118.000\) - this node is a cross-community bridge._
 - **Why does \`Notable Architectural Decisions\` connect \`Architecture\` to \`Extension Code Indexer\`?**
-  _High betweenness centrality \(18018.000\) - this node is a cross-community bridge._
-- **What connects \`FileEntry\`, \`TypeProperty\`, \`TypeEntry\` to the rest of the system?**
-  _166 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _High betweenness centrality \(19803.000\) - this node is a cross-community bridge._
+- **What connects \`ChatResult\`, \`getFieldGuide\(\)\`, \`parseResponse\(\)\` to the rest of the system?**
+  _169 weakly-connected nodes found - possible documentation gaps or missing edges._

@@ -11,7 +11,7 @@ import { ChatToggleButton } from './components/chat/ChatToggleButton'
 
 function App() {
   const { view, navigate, goHome } = useViewState()
-  const chat = useChat()
+  const chat = useChat(view.page)
 
   const renderPage = () => {
     switch (view.page) {

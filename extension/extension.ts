@@ -4,6 +4,7 @@ import * as path from 'path'
 import { loadCharter, saveCharter, loadPrd, savePrd, loadCustomOptions, saveCustomOptions } from './formStateManager'
 import { handlePdfExport, handlePdfExportAs } from './pdfExportHandler'
 import { CodeIndexer } from './codeIndexer'
+import { processChatMessage } from './chatAgent'
 import type { WebviewToExtensionMessage, ExtensionToWebviewMessage } from './protocol'
 
 export function activate(context: vscode.ExtensionContext) {
@@ -110,6 +111,29 @@ export function activate(context: vscode.ExtensionContext) {
         }
         const index = await new CodeIndexer(ws).loadIndex()
         postMessage({ type: 'loadCodeIndex', data: index })
+        break
+      }
+      case 'chatMessage': {
+        console.log('[Req-Gath-Sys] chatMessage:', msg.text, 'phase:', msg.phase)
+        try {
+          const result = await processChatMessage(msg.text, msg.phase)
+          if (result.formUpdated) {
+            if (msg.phase === 'project-charter') {
+              const data = await loadCharter()
+              postMessage({ type: 'loadCharter', data })
+            } else if (msg.phase === 'prd') {
+              const { prd, charter } = await loadPrd()
+              postMessage({ type: 'loadPrd', data: prd, charterData: charter })
+            }
+          }
+          console.log('[Req-Gath-Sys] posting chatResponse:', result.message?.substring(0, 100))
+          postMessage({ type: 'chatResponse', text: result.message })
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err)
+          console.error('[Req-Gath-Sys] chatMessage error:', errorMsg)
+          console.log('[Req-Gath-Sys] posting chatResponse with error')
+          postMessage({ type: 'chatResponse', text: `Error: ${errorMsg}` })
+        }
         break
       }
     }
