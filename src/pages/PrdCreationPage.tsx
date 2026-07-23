@@ -42,7 +42,7 @@ export function PrdCreationPage({ onNavigate, goHome }: PrdCreationPageProps) {
     if (typeof activeView === 'number') {
       if (activeView === 8) {
         saveNow()
-        onNavigate({ page: 'placeholder', phaseId: 'system-design' })
+        onNavigate({ page: 'system-design', section: 'overview' })
         return
       }
       setShowValidation(false)
@@ -66,7 +66,7 @@ export function PrdCreationPage({ onNavigate, goHome }: PrdCreationPageProps) {
       <main className="flex-1 px-4 md:px-8 py-6 min-w-0">
         <div className="w-full max-w-6xl mx-auto">
         {activeView === 'overview' ? (
-          <PrdOverview data={data} onNavigate={navigateTo} charterData={cd} onProceedToSystemDesign={() => onNavigate({ page: 'placeholder', phaseId: 'system-design' })} />
+          <PrdOverview data={data} onNavigate={navigateTo} charterData={cd} onProceedToSystemDesign={() => onNavigate({ page: 'system-design', section: 'overview' })} />
         ) : (
           <div className="w-full">
             <div className="border-2 border-on-background bg-white mac-window-shadow mb-4">
@@ -90,7 +90,7 @@ export function PrdCreationPage({ onNavigate, goHome }: PrdCreationPageProps) {
               {activeView === 5 && <PrdSection5 data={data} update={update} charterData={cd} />}
               {activeView === 6 && <PrdSection6 data={data} update={update} charterData={cd} />}
               {activeView === 7 && <PrdSection7 data={data} update={update} />}
-              {activeView === 8 && <PrdSection8 data={data} update={update} charterData={cd} onProceedToSystemDesign={() => onNavigate({ page: 'placeholder', phaseId: 'system-design' })} />}
+              {activeView === 8 && <PrdSection8 data={data} update={update} charterData={cd} onProceedToSystemDesign={() => onNavigate({ page: 'system-design', section: 'overview' })} />}
               </ValidationContext.Provider>
             </div>
 

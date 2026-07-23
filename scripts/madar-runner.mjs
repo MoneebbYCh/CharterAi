@@ -26,7 +26,7 @@ async function main() {
 
   const graphPath = result.graphPath
 
-  const output = {
+  const output = {-
     success: true,
     graphPath,
     result: {

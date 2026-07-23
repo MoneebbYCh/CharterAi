@@ -5,6 +5,7 @@ export type View =
   | { page: 'home' }
   | { page: 'project-charter'; section: 'overview' | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 }
   | { page: 'prd'; section: 'overview' | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 }
+  | { page: 'system-design'; section: 'overview' | 1 | 2 | 3 | 4 | 5 | 6 }
   | { page: 'placeholder'; phaseId: string }
 
 export function useViewState() {

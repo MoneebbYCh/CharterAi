@@ -27,6 +27,10 @@
       {
         "command": "req-gath-sys.indexCodebase",
         "title": "Req-Gath-Sys: Index Codebase"
+      },
+      {
+        "command": "req-gath-sys.configureApiKey",
+        "title": "Req-Gath-Sys: Configure API Key"
       }
     ],
     "menus": {
@@ -39,6 +43,9 @@
         },
         {
           "command": "req-gath-sys.indexCodebase"
+        },
+        {
+          "command": "req-gath-sys.configureApiKey"
         }
       ]
     }
@@ -56,6 +63,7 @@
     "@lubab/madar": "^0.27.9",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
+    "openai": "^4.104.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },
@@ -67,7 +75,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/vscode": "^1.120.0",
     "@vitejs/plugin-react": "^6.0.1",
-    "esbuild": "^0.25.12",
+    "esbuild": "^0.28.0",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",

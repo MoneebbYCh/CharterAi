@@ -156,6 +156,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                     onClick={() => {
                       if (tile.phaseId === 'project-charter') onNavigate({ page: 'project-charter', section: 'overview' })
                       else if (tile.phaseId === 'prd') onNavigate({ page: 'prd', section: 'overview' })
+                      else if (tile.phaseId === 'system-design') onNavigate({ page: 'system-design', section: 'overview' })
                       else onNavigate({ page: 'placeholder', phaseId: tile.phaseId })
                     }}
                     className="border border-on-background p-4 bg-white hover:bg-surface-container-low transition-colors group min-h-[120px] flex flex-col text-left cursor-pointer"

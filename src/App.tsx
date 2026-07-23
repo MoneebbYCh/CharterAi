@@ -2,6 +2,7 @@ import { useViewState } from './hooks/useViewState'
 import { HomePage } from './pages/HomePage'
 import { ProjectCharterPage } from './pages/ProjectCharterPage'
 import { PrdCreationPage } from './pages/PrdCreationPage'
+import { SystemDesignPage } from './pages/SystemDesignPage'
 import { PhasePlaceholderPage } from './pages/PhasePlaceholderPage'
 import { CRTMonitor } from './components/layout/CRTMonitor'
 import { PHASES } from './data/phases'
@@ -21,6 +22,8 @@ function App() {
         return <ProjectCharterPage onNavigate={navigate} goHome={goHome} />
       case 'prd':
         return <PrdCreationPage onNavigate={navigate} goHome={goHome} />
+      case 'system-design':
+        return <SystemDesignPage onNavigate={navigate} goHome={goHome} />
       case 'placeholder': {
         const phase = PHASES.find((p) => p.id === view.phaseId)
         if (!phase) return <HomePage onNavigate={navigate} />

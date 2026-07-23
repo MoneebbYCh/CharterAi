@@ -1,11 +1,22 @@
 import * as vscode from 'vscode'
 import * as fs from 'fs'
 import * as path from 'path'
-import { loadCharter, saveCharter, loadPrd, savePrd, loadCustomOptions, saveCustomOptions } from './formStateManager'
 import { handlePdfExport, handlePdfExportAs } from './pdfExportHandler'
 import { CodeIndexer } from './codeIndexer'
-import { processChatMessage } from './chatAgent'
-import type { WebviewToExtensionMessage, ExtensionToWebviewMessage } from './protocol'
+import { getApiKey, promptForApiKey } from './apiKeyManager'
+import {
+  initWorkspace,
+  loadCharter,
+  loadCustomOptions,
+  loadForm,
+  loadPrd,
+  saveCharter,
+  saveCustomOptions,
+  saveForm,
+  savePrd,
+} from './formStateManager'
+import { processChat } from './ai/agent'
+import type { WebviewToExtensionMessage, ExtensionToWebviewMessage, CustomOptionsStorage } from './protocol'
 
 export function activate(context: vscode.ExtensionContext) {
   let panel: vscode.WebviewPanel | undefined
@@ -36,32 +47,46 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   async function handleMessage(msg: WebviewToExtensionMessage): Promise<void> {
+    const ws = workspaceRoot()
+
     switch (msg.type) {
       case 'loadCharter': {
-        const data = await loadCharter()
+        const data = await loadCharter(ws)
         postMessage({ type: 'loadCharter', data })
         break
       }
       case 'loadPrd': {
-        const { prd, charter } = await loadPrd()
-        postMessage({ type: 'loadPrd', data: prd, charterData: charter })
+        const result = await loadPrd(ws)
+        postMessage({ type: 'loadPrd', data: result.prd, charterData: result.charter })
         break
       }
       case 'saveCharter': {
-        await saveCharter(msg.data)
+        await saveCharter(ws, msg.data)
         break
       }
       case 'savePrd': {
-        await savePrd(msg.data)
+        await savePrd(ws, msg.data)
+        break
+      }
+      case 'loadForm': {
+        const data = await loadForm(ws, msg.phase)
+        postMessage({ type: 'loadForm', phase: msg.phase, data })
+        break
+      }
+      case 'saveForm': {
+        await saveForm(ws, msg.phase, msg.data)
         break
       }
       case 'loadCustomOptions': {
-        const data = await loadCustomOptions()
-        postMessage({ type: 'loadCustomOptions', data: data ?? { strings: {}, choices: {} } })
+        const data = await loadCustomOptions(ws)
+        postMessage({
+          type: 'loadCustomOptions',
+          data: (data ?? { strings: {}, choices: {} }) as CustomOptionsStorage,
+        })
         break
       }
       case 'saveCustomOptions': {
-        await saveCustomOptions(msg.data)
+        await saveCustomOptions(ws, msg.data)
         break
       }
       case 'exportPdf': {
@@ -79,7 +104,6 @@ export function activate(context: vscode.ExtensionContext) {
         break
       }
       case 'indexCodebase': {
-        const ws = workspaceRoot()
         if (!ws) {
           vscode.window.showErrorMessage('Open a workspace first.')
           postMessage({ type: 'loadCodeIndex', data: null })
@@ -104,7 +128,6 @@ export function activate(context: vscode.ExtensionContext) {
         break
       }
       case 'loadCodeIndex': {
-        const ws = workspaceRoot()
         if (!ws) {
           postMessage({ type: 'loadCodeIndex', data: null })
           return
@@ -114,24 +137,39 @@ export function activate(context: vscode.ExtensionContext) {
         break
       }
       case 'chatMessage': {
-        console.log('[Req-Gath-Sys] chatMessage:', msg.text, 'phase:', msg.phase)
         try {
-          const result = await processChatMessage(msg.text, msg.phase)
-          if (result.formUpdated) {
-            if (msg.phase === 'project-charter') {
-              const data = await loadCharter()
-              postMessage({ type: 'loadCharter', data })
-            } else if (msg.phase === 'prd') {
-              const { prd, charter } = await loadPrd()
-              postMessage({ type: 'loadPrd', data: prd, charterData: charter })
+          // Optional: SecretStorage key. If empty, llmClient falls back to the
+          // DEEPSEEK_API_KEY / MOONSHOT_API_KEY / generic env variables.
+          const apiKey = (await getApiKey(context)) ?? ''
+
+          const result = await processChat({
+            text: msg.text,
+            phase: msg.phase,
+            workspaceRoot: ws,
+            apiKey,
+          })
+
+          if (result.reload) {
+            if (result.reload.type === 'load_charter') {
+              postMessage({ type: 'loadCharter', data: result.reload.data })
+            } else if (result.reload.type === 'load_prd') {
+              postMessage({
+                type: 'loadPrd',
+                data: result.reload.data,
+                charterData: result.reload.charterData ?? null,
+              })
+            } else if (result.reload.type === 'load_form' && result.reload.phase) {
+              postMessage({
+                type: 'loadForm',
+                phase: result.reload.phase,
+                data: result.reload.data,
+              })
             }
           }
-          console.log('[Req-Gath-Sys] posting chatResponse:', result.message?.substring(0, 100))
+
           postMessage({ type: 'chatResponse', text: result.message })
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err)
-          console.error('[Req-Gath-Sys] chatMessage error:', errorMsg)
-          console.log('[Req-Gath-Sys] posting chatResponse with error')
           postMessage({ type: 'chatResponse', text: `Error: ${errorMsg}` })
         }
         break
@@ -139,7 +177,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   }
 
-  function workspaceRoot(): string | null {
+  function workspaceRoot(): string {
     const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
     if (folder) return folder
     return context.extensionPath
@@ -172,6 +210,10 @@ export function activate(context: vscode.ExtensionContext) {
       })
     }),
 
+    vscode.commands.registerCommand('req-gath-sys.configureApiKey', async () => {
+      await promptForApiKey(context)
+    }),
+
     vscode.commands.registerCommand('req-gath-sys.indexCodebase', async () => {
       const ws = workspaceRoot()
       if (!ws) { vscode.window.showErrorMessage('Open a workspace first.'); return }
@@ -196,12 +238,16 @@ export function activate(context: vscode.ExtensionContext) {
       const ws = workspaceRoot()
       if (!ws) { vscode.window.showErrorMessage('Open a workspace first.'); return }
 
-      const statePath = path.join(ws, '.req-gath-sys')
-      if (!fs.existsSync(statePath)) {
-        fs.mkdirSync(statePath, { recursive: true })
-        vscode.window.showInformationMessage('Req-Gath-Sys workspace initialized!')
-      } else {
-        vscode.window.showInformationMessage('Req-Gath-Sys already initialized in this workspace.')
+      try {
+        const created = await initWorkspace(ws)
+        if (created) {
+          vscode.window.showInformationMessage('Req-Gath-Sys workspace initialized!')
+        } else {
+          vscode.window.showInformationMessage('Req-Gath-Sys already initialized in this workspace.')
+        }
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err)
+        vscode.window.showErrorMessage(`Failed to initialize workspace: ${errorMsg}`)
       }
     }),
   )

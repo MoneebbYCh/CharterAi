@@ -34,7 +34,7 @@ export const PHASES: Phase[] = [
     subtitle: 'Architecture & Technical Spec',
     description: 'Data flows, model selection, infrastructure, APIs, and deployment plan.',
     path: '/system-design',
-    active: false,
+    active: true,
   },
   {
     id: 'dev',

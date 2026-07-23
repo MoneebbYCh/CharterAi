@@ -18,7 +18,7 @@ function nextId(): string {
 const WELCOME: ChatMessage = {
   id: nextId(),
   role: 'assistant',
-  text: "Hello! I'm your Req-Gath-Sys AI assistant. I can help fill in project charter and PRD forms — just ask!",
+  text: "Hello! I'm your Req-Gath-Sys AI assistant. I can help fill in project charter and PRD forms — configure your API key first (command palette: Req-Gath-Sys: Configure API Key), then ask away!",
   timestamp: Date.now(),
 }
 
@@ -85,7 +85,7 @@ export function useChat(phase: string) {
         const fallback: ChatMessage = {
           id: nextId(),
           role: 'assistant',
-          text: 'AI assistant is only available when running inside VS Code with GitHub Copilot enabled.',
+          text: 'AI assistant is only available when running inside VS Code with an API key configured.',
           timestamp: Date.now(),
         }
         setMessages((prev) => [...prev, fallback])
@@ -101,7 +101,7 @@ export function useChat(phase: string) {
         const timeoutMsg: ChatMessage = {
           id: nextId(),
           role: 'assistant',
-          text: 'No response received. Try again — check that GitHub Copilot is signed in and your workspace has a .req-gath-sys directory initialized.',
+          text: 'No response received. Try again — check your API key (Req-Gath-Sys: Configure API Key) and that Python 3 with openai is installed.',
           timestamp: Date.now(),
         }
         setMessages((prev) => [...prev, timeoutMsg])

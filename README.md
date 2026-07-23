@@ -1,73 +1,57 @@
-# React + TypeScript + Vite
+# Req-Gath-Sys
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A VS Code extension that guides teams through a 6-phase project requirements pipeline
+(Charter → PRD → System Design → Dev → QA → Post Dev) with gate-based phase unlocking and
+an AI assistant that fills the requirement forms for you.
 
-Currently, two official plugins are available:
+## Architecture
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Two layers, one runtime (Node — the VS Code extension host). There is no separate backend
+process to install or bundle.
 
-## React Compiler
+1. **Webview (React + Vite)** — `src/`: forms, pages, chat panel.
+2. **TS extension host** — `extension/`: form persistence, AI prompts, LLM calls, code indexer, PDF export.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The webview communicates with the extension host over `postMessage`; the extension host calls
+plain TypeScript functions directly. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for diagrams and detail.
 
-## Expanding the ESLint configuration
+All AI work uses an OpenAI-compatible provider (DeepSeek by default; Kimi or a local Ollama-style
+endpoint optional) via the `openai` npm SDK.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Getting started
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Then open this folder in VS Code, press `F5` to launch the Extension Development Host, and run
+**"Req-Gath-Sys: Open Pipeline"** from the command palette.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Configuring the AI key
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Provide an OpenAI-compatible API key either way:
+
+- **SecretStorage (recommended):** run **"Req-Gath-Sys: Configure API Key"** from the command palette.
+- **Environment variable:** `export DEEPSEEK_API_KEY="sk-..."` (or `MOONSHOT_API_KEY` for Kimi)
+  before launching VS Code.
+
+Select the active provider/model in `.req-gath-sys/config.json`:
+
+```json
+{ "llm": { "provider": "deepseek", "model": null } }
 ```
+
+## Scripts
+
+| Command | What it does |
+|---------|--------------|
+| `npm run build` | Build extension bundle + webview |
+| `npm run build:extension` | esbuild → `out/extension.cjs` |
+| `npm run build:webview` | vite → `dist/` |
+| `npm run dev` | Vite dev server (webview only) |
+| `npm run lint` | ESLint over the project |
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the layer playbook and conventions.
