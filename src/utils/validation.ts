@@ -211,7 +211,7 @@ export function getGateStatus(data: FormData): GateStatus {
   return 'open'
 }
 
-export function isPhaseUnlocked(phaseId: string, _data: FormData | null): boolean {
+export function isPhaseUnlocked(phaseId: string, _data: unknown): boolean {
   if (phaseId === 'project-charter') return true
   if (phaseId === 'prd') return true // TEMP: unlocked for testing
   if (phaseId === 'system-design') return true // TEMP: unlocked for testing

@@ -1,9 +1,13 @@
 import { useMemo } from 'react'
 import type { View } from '../hooks/useViewState'
 import { PHASES } from '../data/phases'
-import { STORAGE_KEY } from '../data/formDefaults'
-import { getGateStatus, getOverallProgress, isPhaseUnlocked, isProjectCharterComplete } from '../utils/validation'
-import type { FormData } from '../types/form'
+import { isPhaseUnlocked } from '../utils/validation'
+import {
+  CHARTER_DOC_STORAGE_KEY,
+  documentHasContent,
+  toCanvasDocument,
+  type CanvasDocument,
+} from '../types/document'
 import { useCodeIndex } from '../hooks/useCodeIndex'
 
 interface HomePageProps {
@@ -19,26 +23,23 @@ const PHASE_TILES = [
   { phaseId: 'post-dev', icon: 'rocket_launch', label: 'Post Dev', tagline: 'Deployment' },
 ]
 
-function loadSavedProject(): { data: FormData | null; percent: number } {
+function loadSavedCharter(): { doc: CanvasDocument | null; hasDraft: boolean } {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { data: null, percent: 0 }
-    const data = JSON.parse(raw) as FormData
-    return { data, percent: getOverallProgress(data).percent }
+    const raw = localStorage.getItem(CHARTER_DOC_STORAGE_KEY)
+    if (!raw) return { doc: null, hasDraft: false }
+    const doc = toCanvasDocument(JSON.parse(raw))
+    return { doc, hasDraft: documentHasContent(doc) }
   } catch {
-    return { data: null, percent: 0 }
+    return { doc: null, hasDraft: false }
   }
 }
 
 export function HomePage({ onNavigate }: HomePageProps) {
-  const { data, percent } = useMemo(() => loadSavedProject(), [])
+  const { doc, hasDraft } = useMemo(() => loadSavedCharter(), [])
   const { state, startIndexing, loadIndex, reset } = useCodeIndex()
 
-  const projectName = data?.section1.projectName.trim() || 'Untitled Project'
-  const projectCode = data?.section1.projectCode.trim() || 'No ID'
-  const hasDraft = Boolean(data?.section1.projectName || data?.section1.submittedBy)
-  const gateStatus = data ? getGateStatus(data) : 'draft'
-  const phase1Complete = data ? isProjectCharterComplete(data) : false
+  const projectName = hasDraft ? 'Charter draft' : 'Untitled Project'
+  const projectCode = doc ? `${doc.blocks.length} blocks` : 'No ID'
 
   return (
     <div className="min-h-full bg-surface-dim pb-10">
@@ -73,11 +74,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
                     {projectName}
                   </span>
                   <span className="text-xs text-on-surface-variant" style={{ fontFamily: 'var(--font-label)' }}>
-                    {projectCode} · {percent}% complete
+                    {projectCode}
                   </span>
-                  <div className="w-36 h-4 border-2 border-on-background inset-field p-[2px] bg-white mt-1">
-                    <div className="h-full bg-primary transition-all" style={{ width: `${percent}%` }} />
-                  </div>
                 </div>
               )}
             </div>
@@ -113,7 +111,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
               {PHASE_TILES.map((tile) => {
                 const phase = PHASES.find((p) => p.id === tile.phaseId)
                 if (!phase) return null
-                const unlocked = isPhaseUnlocked(tile.phaseId, data)
+                const unlocked = isPhaseUnlocked(tile.phaseId, doc)
 
                 const inner = (
                   <>
@@ -279,28 +277,20 @@ export function HomePage({ onNavigate }: HomePageProps) {
           {hasDraft && (
             <footer className="border-t-2 border-on-background bg-surface-container-highest flex flex-wrap justify-between items-center px-6 py-2 gap-2">
               <span
-                className={`text-[11px] font-bold uppercase tracking-wider ${
-                  gateStatus === 'approved' ? 'text-green-700' : gateStatus === 'open' ? 'text-primary' : 'text-on-surface-variant'
-                }`}
+                className="text-[11px] font-bold uppercase tracking-wider text-primary"
                 style={{ fontFamily: 'var(--font-label)' }}
               >
-                {gateStatus === 'approved'
-                  ? 'Phase 1 Complete'
-                  : gateStatus === 'open'
-                    ? 'Gate Open — Sign-off Required'
-                    : 'Draft'}
+                Charter canvas draft
               </span>
               <div className="flex gap-4 items-center">
-                {phase1Complete && (
-                  <button
-                    type="button"
-                    onClick={() => onNavigate({ page: 'prd', section: 'overview' })}
-                    className="text-[11px] text-on-primary bg-primary border-2 border-on-background font-bold px-3 py-0.5"
-                    style={{ fontFamily: 'var(--font-label)' }}
-                  >
-                    Proceed to PRD →
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => onNavigate({ page: 'prd', section: 'overview' })}
+                  className="text-[11px] text-on-primary bg-primary border-2 border-on-background font-bold px-3 py-0.5"
+                  style={{ fontFamily: 'var(--font-label)' }}
+                >
+                  Proceed to PRD →
+                </button>
               </div>
             </footer>
           )}

@@ -210,11 +210,12 @@ graph LR
 | Component | Status |
 |-----------|--------|
 | Extension form CRUD (TS `formStateManager`) | Done |
-| Webview routing + Charter/PRD forms | Done |
+| Webview routing + Charter canvas (BlockNote) / PRD forms | Done |
 | Chat UI (panel + toggle) | Done |
 | Chat flow (Webview → Extension → `ai/agent.ts`) | Done |
 | AI orchestration (`extension/ai/`) | Done — OpenAI-compatible (DeepSeek/Kimi/local) |
-| AI form-filling (JSON mode + dot-path merge) | Done |
+| AI form-filling (JSON mode + dot-path merge) | Done (PRD / System Design) |
+| AI canvas drafting (BlockNote JSON document replace) | Done (Charter) |
 | Code indexer (madar + AST) | Done |
 | PDF export | Done |
 | Code-index context in chat | Partial — reads `code-index.json` when present |

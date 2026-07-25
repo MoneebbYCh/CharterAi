@@ -1,100 +1,40 @@
-export const CHARTER_GUIDE = `PROJECT CHARTER FIELDS:
+export const CHARTER_GUIDE = `PROJECT CHARTER — PMI-ALIGNED AUTHORIZATION DOCUMENT
 
-Section 1 - Project Identity (section1):
-  projectName (string): Project name
-  projectCode (string): Project code or ID
-  dateSubmitted (string, YYYY-MM-DD): Date submitted
-  submittedBy (string): Person who submitted
-  aiTeamLead (string): AI team lead
-  targetStartDate (string, YYYY-MM-DD): Target start date
-  requestedDeliveryDate (string, YYYY-MM-DD): Requested delivery
-  projectType ("client-services"|"internal-product"|""): Project type
-  priority ("P0"|"P1"|"P2"|"P3"|""): Priority level
-  priorityJustification (string): Why this priority was chosen
-  budgetEstimate (string): Budget estimate
-  teamSkillsRequired (string): Skills needed
-  sponsorDecisionMaker (string): Decision maker
-  keyMilestones (string): Key milestones
-  includesAiWork (boolean): Does project include AI work?
+Purpose of this document (not just a template):
+A project charter formally authorizes the project to exist and gives the lead authority
+to spend resources on it. Before the charter it is an idea; after it, it is a sanctioned
+project with a named owner, a boundary, and a way to know if it worked.
 
-Section 2 - Problem Statement (section2):
-  coreProblem (string): Core problem to solve
-  whoAffected (string): Who is affected
-  currentWorkaround (string): Current workaround
-  costOfInaction (string): Cost of not solving
-  primaryObjective (string): Primary objective
-  secondaryObjectives (string): Secondary objectives
-  nonGoals (string): Non-goals
+DEFAULT DRAFTING BRIEF:
+Draft a complete charter that answers: why authorize this, who owns it, what is in/out
+of bounds, how success will be judged, and what could kill it.
 
-Section 3 - KPIs & Acceptance (section3):
-  primaryKpi (string): Primary KPI
-  targetValue (string): Target value
-  measurementMethod (string): Measurement method
-  performanceMetrics (array of {metric, minimumThreshold, target, measurementMethod})
-  acceptanceCriterion1/2/3 (string): Acceptance criteria
-  definitionOfDone: {primaryKpiMet, acceptanceVerified, evalReportSigned, stakeholderAccepted, deploymentChecklist, documentationHandover} (all boolean)
+Required sections on any full draft (in roughly this order):
+1. Title + purpose/justification callout (business problem, not a feature list)
+2. Objectives & success criteria → kpiGrid (specific & measurable)
+3. High-level scope → scopeBounds (IN and explicit OUT — exclusions are mandatory)
+4. Key stakeholders → stakeholderTable (sponsor, PM/owner, major stakeholders, concern/authority)
+5. High-level milestones / timeline (heading + short bullets or numbered list — checkpoints only, not a full schedule)
+6. High-level budget / resources (heading + paragraph or bullets)
+7. Assumptions & constraints (heading + bullets; use warn callout for hard constraints)
+8. High-level risks → riskList
+9. Approval / sign-off (callout listing who must approve for this to be real)
 
-Section 4 - Stakeholders (section4):
-  stakeholders (array of {nameRole, interestLevel (H|M|L), influence (H|M|L), keyConcern})
-  elicitationSummary (string): Summary
-  assumptions (array of {assumption, classification (KNOWN|UNKNOWN|RISKY), ifWrongImpact})
-  artifactLinks (string): Links
+Quality bar (what separates a good charter from a checkbox one):
+- Specificity: success criteria that two people could agree on six months later.
+  Bad: "modernize the platform." Good: "cut p95 checkout latency from 2.1s to <800ms."
+- Honesty about scope boundaries: always state what is excluded.
+- Authority: name who can spend / decide; do not leave ownership implied.
 
-Section 5 - Data & AI (section5):
-  dataRequired (string): Data required
-  dataOwnerAccess (string): Data owners
-  dataCurrentState (string): Current state
-  dataVolume (string): Volume
-  dataReadiness (object of booleans): availableNow, accessNeedsArrangement, partiallyAvailable, doesNotExist, qualityUnknown, syntheticNeeded
-  dataSensitivity (string): Sensitivity
-  aiWorkTypes (object of booleans): promptEngineering, fineTuning, customTraining, rag, agentic, classicalMl, computerVision, nlp, dataPipeline, other
-  aiWorkOther (string): Other AI work
-  techStackConstraints (string): Tech constraints
-  deploymentTarget (string): Deployment target
-  latencyRequirement (string): Latency
-  throughputRequirement (string): Throughput
-  costPerCall (string): Cost per call
-  uptimeSla (string): Uptime SLA
-  infrastructureConstraints (string): Infra constraints
-  acceptableErrorRate (string): Error tolerance
-  whenModelWrong (string): Fallback when model is wrong
-  whenUnavailable (string): Fallback when unavailable
-  biasFairness (string): Bias & fairness
+Elicitation behavior:
+If the user gives a vague ask ("build X", "modernize Y"), ask or infer toward:
+- What business problem fails if we do nothing?
+- What measurable outcome proves success?
+- What is explicitly out of scope?
+- Who is sponsor vs delivery owner?
+- What hard date, budget, or dependency constrains us?
+Prefer filling a strong draft with clear placeholders over omitting required sections.`
 
-Section 6A - Client Services (section6A):
-  clientName (string): Client name
-  clientPoc (string): Client POC
-  contractScope (string): Contract scope
-  writtenConfirmation (string): Written confirmation
-  deliverableFormat (string): Deliverable format
-  clientApprover (string): Client approver
-  infrastructureDependencies (string): Infra dependencies
-  commercialConstraints (string): Commercial constraints
-  dependencies (string): Dependencies
-  artifactLinks (string): Links
-
-Section 6B - Internal Product (section6B):
-  productArea (string): Product area
-  roadmapStatus ("on-roadmap"|"proposing"|"hotfix"|"spike"|""): Roadmap status
-  internalStakeholder (string): Internal stakeholder
-  userResearchEvidence (string): User research
-  appetite ("small"|"medium"|"large"|"spike"|""): Appetite
-  dependencies (string): Dependencies
-  artifactLinks (string): Links
-
-Section 7 - Constraints & Risks (section7):
-  timeConstraints (string): Time constraints
-  resourceConstraints (string): Resource constraints
-  technologyConstraints (string): Technology constraints
-  budgetConstraints (string): Budget constraints
-  risks (array of {risk, likelihood (H|M|L), impact (H|M|L), mitigation})
-  openQuestions (array of {question, owner, dueDate, status})
-
-Section 8 - Gate Review (section8):
-  definitionOfReady (object of booleans with arbitrary keys)
-  gateDecision ("approved"|"needs-revision"|"rejected"|""): Decision
-  gateReviewNotes (string): Review notes
-  signatures (array of {name, role, signature, date})`
 
 export const PRD_GUIDE = `PRD FIELDS:
 
@@ -146,6 +86,7 @@ Section 8 - Review & Sign-off (section8):
   reviewNotes (string): Review notes
   signatures (array of {name, role, signature, date}): Signatures`
 
+
 export const SYSTEM_DESIGN_GUIDE = `SYSTEM DESIGN FIELDS:
 
 Section 1 - Architecture Overview (section1):
@@ -185,6 +126,7 @@ Section 6 - Review & Sign-off (section6):
   designStatus ("draft"|"in-review"|"approved"|"needs-revision"|""): Design status
   reviewNotes (string): Review notes
   signatures (array of {name, role, signature, date}): Signatures`
+
 
 export function getFieldGuide(phase: string): string {
   if (phase === 'project-charter') return CHARTER_GUIDE

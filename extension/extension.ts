@@ -32,9 +32,11 @@ export function activate(context: vscode.ExtensionContext) {
     const csp = [
       `default-src 'none'`,
       `style-src ${webview.cspSource} 'unsafe-inline' https://fonts.googleapis.com`,
-      `font-src ${webview.cspSource} https://fonts.gstatic.com`,
+      `font-src ${webview.cspSource} data: https://fonts.gstatic.com`,
       `script-src ${webview.cspSource}`,
-      `img-src ${webview.cspSource} data:`,
+      `img-src ${webview.cspSource} data: blob:`,
+      `worker-src ${webview.cspSource} blob:`,
+      `connect-src ${webview.cspSource}`,
     ].join('; ')
 
     html = html.replace('<head>', `<head><meta http-equiv="Content-Security-Policy" content="${csp}">`)

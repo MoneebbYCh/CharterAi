@@ -10,7 +10,7 @@ export const PROVIDERS: Record<string, ProviderInfo> = {
   deepseek: {
     baseUrl: 'https://api.deepseek.com',
     defaultModel: 'deepseek-v4-flash',
-    env: 'sk-b8edcd8784f6462494e35efa18f9dbce',
+    env: 'DEEPSEEK_API_KEY',
   },
   kimi: {
     baseUrl: 'https://api.moonshot.ai/v1',

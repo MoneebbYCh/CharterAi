@@ -1,6 +1,5 @@
 import type { View } from '../../hooks/useViewState'
 import { PHASES } from '../../data/phases'
-import type { FormData } from '../../types/form'
 import type { GateStatus } from '../../utils/validation'
 import { isPhaseUnlocked } from '../../utils/validation'
 
@@ -9,7 +8,8 @@ interface PipelineHeaderProps {
   onExport: () => void
   onSave: () => void
   saveLabel?: string
-  formData?: FormData
+  /** Legacy form data for phase unlock; optional for canvas phases. */
+  formData?: unknown
 }
 
 export function PipelineHeader({ onHome, onExport, onSave, saveLabel = 'Save Draft', formData }: PipelineHeaderProps) {
