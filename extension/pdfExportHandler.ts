@@ -9,7 +9,7 @@ export async function handlePdfExport(phase: 'charter' | 'prd', buffer: ArrayBuf
     return null
   }
 
-  const filename = `Req-Gath-Sys-${phase === 'charter' ? 'Project-Charter' : 'PRD'}.pdf`
+  const filename = `CharterAi-${phase === 'charter' ? 'Project-Charter' : 'PRD'}.pdf`
   const filePath = path.join(exportPath, filename)
 
   try {
@@ -22,7 +22,7 @@ export async function handlePdfExport(phase: 'charter' | 'prd', buffer: ArrayBuf
 }
 
 export async function handlePdfExportAs(phase: 'charter' | 'prd', buffer: ArrayBuffer): Promise<string | null> {
-  const defaultName = `Req-Gath-Sys-${phase === 'charter' ? 'Project-Charter' : 'PRD'}.pdf`
+  const defaultName = `CharterAi-${phase === 'charter' ? 'Project-Charter' : 'PRD'}.pdf`
 
   const uri = await vscode.window.showSaveDialog({
     defaultUri: vscode.Uri.file(defaultName),

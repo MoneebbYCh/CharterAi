@@ -13,6 +13,7 @@ import {
   canvasSchema,
   filterSuggestionItems,
   getCanvasSlashMenuItems,
+  type CanvasEditor,
 } from './schema'
 import { sanitizeCanvasBlocks } from './sanitizeBlocks'
 
@@ -21,13 +22,18 @@ interface DocumentCanvasProps {
   onChange: (blocks: BlockNoteBlock[]) => void
   externalRevision: number
   externalBlocks: BlockNoteBlock[] | null
+  /** Remount key when the boundary resets the document. */
+  editorKey?: string | number
+  /** Expose the live editor for the tools sidebar. */
+  onEditorReady?: (editor: CanvasEditor | null) => void
 }
 
-export function DocumentCanvas({
+function DocumentCanvasInner({
   initialBlocks,
   onChange,
   externalRevision,
   externalBlocks,
+  onEditorReady,
 }: DocumentCanvasProps) {
   const applyingExternal = useRef(false)
   const lastExternalRevision = useRef(0)
@@ -43,10 +49,15 @@ export function DocumentCanvas({
     schema: canvasSchema,
     initialContent,
     placeholders: {
-      default: "Type '/' for Scope, KPIs, Stakeholders…",
+      default: "Type '/' for Scope, KPIs, Diagram…",
       heading: 'Heading',
     },
   })
+
+  useEffect(() => {
+    onEditorReady?.(editor as CanvasEditor)
+    return () => onEditorReady?.(null)
+  }, [editor, onEditorReady])
 
   useEffect(() => {
     if (!externalBlocks || externalRevision === lastExternalRevision.current) return
@@ -55,6 +66,13 @@ export function DocumentCanvas({
     try {
       const next = sanitizeCanvasBlocks(externalBlocks)
       editor.replaceBlocks(editor.document, next)
+    } catch (err) {
+      console.error('[DocumentCanvas] replaceBlocks failed', err)
+      try {
+        editor.replaceBlocks(editor.document, [{ type: 'paragraph', content: '' }])
+      } catch {
+        /* ignore secondary failure — ErrorBoundary will catch render issues */
+      }
     } finally {
       queueMicrotask(() => {
         applyingExternal.current = false
@@ -77,7 +95,10 @@ export function DocumentCanvas({
           triggerCharacter="/"
           getItems={async (query) =>
             filterSuggestionItems(
-              [...getDefaultReactSlashMenuItems(editor), ...getCanvasSlashMenuItems(editor)],
+              [
+                ...getDefaultReactSlashMenuItems(editor),
+                ...getCanvasSlashMenuItems(editor as CanvasEditor),
+              ],
               query,
             )
           }
@@ -87,4 +108,8 @@ export function DocumentCanvas({
   )
 }
 
-export type { Block }
+export function DocumentCanvas(props: DocumentCanvasProps) {
+  return <DocumentCanvasInner key={props.editorKey ?? 'canvas'} {...props} />
+}
+
+export type { Block, CanvasEditor }

@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import { LEGACY_STATE_DIR, STATE_DIR } from '../brand'
 
-const STATE_DIR = '.req-gath-sys'
 const CODE_INDEX_FILE = 'code-index.json'
 
 // Keep the injected context small so it does not blow the model context window.
@@ -23,14 +23,17 @@ interface CodeIndexShape {
 }
 
 function readIndex(workspaceRoot: string): CodeIndexShape | null {
-  const indexPath = path.join(workspaceRoot, STATE_DIR, CODE_INDEX_FILE)
-  if (!fs.existsSync(indexPath)) return null
-  try {
-    const data = JSON.parse(fs.readFileSync(indexPath, 'utf8'))
-    return data && typeof data === 'object' ? (data as CodeIndexShape) : null
-  } catch {
-    return null
+  for (const dir of [STATE_DIR, LEGACY_STATE_DIR]) {
+    const indexPath = path.join(workspaceRoot, dir, CODE_INDEX_FILE)
+    if (!fs.existsSync(indexPath)) continue
+    try {
+      const data = JSON.parse(fs.readFileSync(indexPath, 'utf8'))
+      return data && typeof data === 'object' ? (data as CodeIndexShape) : null
+    } catch {
+      /* try next */
+    }
   }
+  return null
 }
 
 function names(items: Array<Record<string, unknown>> | undefined, key: string, limit: number): string[] {

@@ -1,28 +1,40 @@
 import type { View } from '../../hooks/useViewState'
 import { PHASES } from '../../data/phases'
 import type { GateStatus } from '../../utils/validation'
-import { isPhaseUnlocked } from '../../utils/validation'
+import { isCanvasPhaseId } from '../../data/canvasPhases'
+import { BrandMark } from '../BrandMark'
 
 interface PipelineHeaderProps {
   onHome: () => void
   onExport: () => void
   onSave: () => void
   saveLabel?: string
-  /** Legacy form data for phase unlock; optional for canvas phases. */
+  /** Current phase — highlights the active tab. */
+  currentPhaseId?: string
+  /** Jump between phases from the header strip. */
+  onNavigate?: (view: View) => void
+  /** @deprecated Unused — phases are no longer gated. */
   formData?: unknown
 }
 
-export function PipelineHeader({ onHome, onExport, onSave, saveLabel = 'Save Draft', formData }: PipelineHeaderProps) {
+export function PipelineHeader({
+  onHome,
+  onExport,
+  onSave,
+  saveLabel = 'Save Draft',
+  currentPhaseId,
+  onNavigate,
+}: PipelineHeaderProps) {
   return (
     <header className="sticky top-0 w-full z-50 flex flex-col border-b-2 border-on-background bg-secondary-container">
       <div className="flex justify-between items-center px-6 py-2">
         <button
           type="button"
           onClick={onHome}
-          className="font-bold text-lg tracking-tighter text-on-background hover:text-primary transition-colors"
-          style={{ fontFamily: 'var(--font-headline)' }}
+          className="hover:opacity-80 transition-opacity"
+          aria-label="Home"
         >
-          Project Pipeline
+          <BrandMark size="sm" />
         </button>
         <div className="flex gap-4">
           <button
@@ -45,31 +57,43 @@ export function PipelineHeader({ onHome, onExport, onSave, saveLabel = 'Save Dra
       </div>
       <nav className="flex w-full overflow-x-auto">
         {PHASES.map((phase) => {
-          const unlocked = isPhaseUnlocked(phase.id, formData ?? null)
-          if (!unlocked) {
-            return (
-              <span
-                key={phase.id}
-                title="Complete and approve the gate review first"
-                className="flex-1 min-w-[140px] px-4 py-2 flex items-center justify-between border-r border-on-background bg-secondary-container text-on-secondary-container opacity-50 cursor-not-allowed"
-              >
-                <span className="text-xs font-bold truncate" style={{ fontFamily: 'var(--font-label)' }}>
-                  {phase.title}
-                </span>
-                <span className="material-symbols-outlined text-[16px]">lock</span>
+          const active = phase.id === currentPhaseId
+          const canNavigate = onNavigate && isCanvasPhaseId(phase.id)
+          const className = [
+            'flex-1 min-w-[140px] px-4 py-2 flex items-center justify-between border-r border-on-background transition-colors text-left',
+            active
+              ? 'bg-white text-on-background'
+              : 'bg-secondary-container text-on-background hover:bg-surface-container-low',
+            canNavigate ? 'cursor-pointer' : 'cursor-default',
+          ].join(' ')
+
+          const inner = (
+            <>
+              <span className="text-xs font-bold truncate" style={{ fontFamily: 'var(--font-label)' }}>
+                {phase.title}
               </span>
+              <span className="material-symbols-outlined text-[16px]">
+                {active ? 'radio_button_checked' : 'radio_button_unchecked'}
+              </span>
+            </>
+          )
+
+          if (canNavigate) {
+            return (
+              <button
+                key={phase.id}
+                type="button"
+                className={className}
+                onClick={() => onNavigate({ page: phase.id })}
+              >
+                {inner}
+              </button>
             )
           }
 
           return (
-            <span
-              key={phase.id}
-              className="flex-1 min-w-[140px] px-4 py-2 flex items-center justify-between border-r border-on-background bg-secondary-container text-on-secondary-container transition-colors"
-            >
-              <span className="text-xs font-bold truncate" style={{ fontFamily: 'var(--font-label)' }}>
-                {phase.title}
-              </span>
-              <span className="material-symbols-outlined text-[16px]">radio_button_unchecked</span>
+            <span key={phase.id} className={className}>
+              {inner}
             </span>
           )
         })}
@@ -124,7 +148,7 @@ export function PipelineFooter({ gateStatus, onExportPdf, onSignOff, onNavigate 
         {gateStatus === 'approved' && onNavigate && (
           <button
             type="button"
-            onClick={() => onNavigate({ page: 'prd', section: 'overview' })}
+            onClick={() => onNavigate({ page: 'prd' })}
             className="text-[11px] text-on-primary bg-primary border-2 border-on-background font-bold px-3 py-0.5 outset-button"
             style={{ fontFamily: 'var(--font-label)' }}
           >

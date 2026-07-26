@@ -1,136 +1,136 @@
-export const CHARTER_GUIDE = `PROJECT CHARTER — PMI-ALIGNED AUTHORIZATION DOCUMENT
+export const CHARTER_GUIDE = `PROJECT CHARTER — PRACTITIONER SCHEMA (authorization + soft agreement)
 
-Purpose of this document (not just a template):
-A project charter formally authorizes the project to exist and gives the lead authority
-to spend resources on it. Before the charter it is an idea; after it, it is a sanctioned
-project with a named owner, a boundary, and a way to know if it worked.
+Dual framing the agent must internalize:
+1) Formal: sponsor/initiator issues the charter authorizing the project and giving the PM
+   authority to apply organizational resources.
+2) Practical: it is a soft agreement between PM and owners NOT to change timeline, scope,
+   or budget without proper consideration and impact analysis.
+Every draft field should answer: "If this changes later, could we point here and say
+that is outside what was agreed?"
 
-DEFAULT DRAFTING BRIEF:
-Draft a complete charter that answers: why authorize this, who owns it, what is in/out
-of bounds, how success will be judged, and what could kill it.
+HARD LENGTH CONSTRAINT (enforce, do not merely suggest):
+Keep the charter short — readable in a few minutes. Target ≤ ~1500–2000 words
+(about 5 pages equivalent). If a draft would bloat past that, compress; verbosity is failure.
 
-Required sections on any full draft (in roughly this order):
-1. Title + purpose/justification callout (business problem, not a feature list)
-2. Objectives & success criteria → kpiGrid (specific & measurable)
-3. High-level scope → scopeBounds (IN and explicit OUT — exclusions are mandatory)
-4. Key stakeholders → stakeholderTable (sponsor, PM/owner, major stakeholders, concern/authority)
-5. High-level milestones / timeline (heading + short bullets or numbered list — checkpoints only, not a full schedule)
-6. High-level budget / resources (heading + paragraph or bullets)
-7. Assumptions & constraints (heading + bullets; use warn callout for hard constraints)
-8. High-level risks → riskList
-9. Approval / sign-off (callout listing who must approve for this to be real)
+SECTION SCHEMA (hard-code this structure):
+Required every time:
+- Project Title & Short Name (heading + short abbreviation for downstream PRD/design naming)
+- Project Description (plain language vision + background; simplify jargon; ask what's deliberately NOT included)
+- Assigned Project Manager (may default to the current user if known)
+- PM's Authority Level (ALWAYS ask explicitly — users skip this; never silent-default)
+- Business Case (MOST IMPORTANT — later changes get checked against this; if a change isn't
+  aligned with the business case it should be rejected. Store with stable anchors.businessCaseId)
+- Stakeholders (names + role only — in-depth analysis is later phases)
+- Known Requirements (high-level only; may point to other docs — natural handoff to PRD)
+- Deliverables
+- Assumptions
+- Constraints (timeline, deadline/must-dates, must-have scope, budget, resources — ask each category)
+- Measurable Objectives (STRICT GATE — concrete & measurable; store anchors.objectivesId)
+- Approval Requirements (who approves what, at which milestone)
+- Project Risks (high-level only)
+- Sponsor Signature / sign-off (even if informal/digital)
 
-Quality bar (what separates a good charter from a checkbox one):
-- Specificity: success criteria that two people could agree on six months later.
-  Bad: "modernize the platform." Good: "cut p95 checkout latency from 2.1s to <800ms."
-- Honesty about scope boundaries: always state what is excluded.
-- Authority: name who can spend / decide; do not leave ownership implied.
+Conditional:
+- Preassigned Resources — skip gracefully for solo/small teams; do not force
 
-Elicitation behavior:
-If the user gives a vague ask ("build X", "modernize Y"), ask or infer toward:
-- What business problem fails if we do nothing?
-- What measurable outcome proves success?
-- What is explicitly out of scope?
-- Who is sponsor vs delivery owner?
-- What hard date, budget, or dependency constrains us?
-Prefer filling a strong draft with clear placeholders over omitting required sections.`
+ELICITATION ORDER (do not let the user skip):
+1. Business Case FIRST — problem, why now, cost of inaction — BEFORE objectives or deep scope.
+2. Project Description + explicit "what is deliberately NOT included?"
+3. Measurable Objectives — each must contain a number, date, or binary success condition.
+   If user says "improve performance," push back: by how much, measured how, by when?
+4. Constraints as a forced checklist across: timeline, budget, must-have scope, resources, tooling/platform.
+5. Stakeholders + Deliverables + Risks — one line each, high-level only.
+6. Approval Requirements — who signs off on what.
 
+Never let the user skip Business Case to jump to objectives.
+Never accept an objective without a measurable condition.`
 
-export const PRD_GUIDE = `PRD FIELDS:
+export const PRD_GUIDE = `PRODUCT REQUIREMENTS DOCUMENT — canvas (not fixed form fields)
 
-Section 1 - Executive Summary (section1):
-  solutionOverview (string): Solution overview
-  scopeItems (array of {item, description, priority (H|M|L)}): Scope items
-  keyDecisions (array of {decision, rationale, owner}): Key decisions
+Purpose: translate the approved Charter into buildable product requirements.
+Trace every major requirement back to charter business case / objectives when possible
+(reference anchors.businessCaseId / anchors.objectivesId / shortName if present).
 
-Section 2 - Goals & Scope (section2):
-  businessGoals (array of {goal, owner, priority (H|M|L)}): Business goals
-  successMetrics (array of {metric, target, measurement}): Success metrics
-  outOfScope (array of {item, rationale}): Out of scope items
+HARD LENGTH: prefer decision-dense docs. Target ≤ ~2500–3500 words unless the user asks for depth.
 
-Section 3 - User Personas (section3):
-  personas (array of {persona, description, goals, painPoints}): User personas
+Suggested structure (use headings + custom blocks freely):
+1. Title / Short Name (align with charter)
+2. Solution overview (paragraphs) + scopeBounds (in / out)
+3. Goals & success metrics — kpiGrid where measurable
+4. Personas / primary users (short callouts or bullets)
+5. Functional requirements — epics / user stories / acceptance criteria (bullets or tables via prose)
+6. Non-functional requirements — performance, security, scalability, compliance, usability
+7. Data & AI considerations (if relevant)
+8. Integrations & rollout notes
+9. Risks / open questions — riskList
+10. Review & sign-off — callout
 
-Section 4 - Functional Requirements (section4):
-  features (array of {epic, userStory, priority (H|M|L), acceptanceCriteria, notes}): Features & stories
+Prefer custom blocks (callout, kpiGrid, scopeBounds, stakeholderTable, riskList) over long prose.
+Do not invent custom block types beyond the catalog.`
 
-Section 5 - Non-Functional Requirements (section5):
-  performanceRequirements (array of {requirement, specification})
-  securityRequirements (array of {requirement, specification})
-  scalabilityRequirements (array of {requirement, specification})
-  complianceRequirements (array of {requirement, specification})
-  usabilityRequirements (array of {requirement, specification})
+export const SYSTEM_DESIGN_GUIDE = `SYSTEM DESIGN — canvas technical blueprint
 
-Section 6 - Data & AI (section6):
-  dataSources (array of {source, type, volume, accessMethod})
-  dataSchemaFormat (string): Schema format
-  dataVolumeEstimate (string): Volume estimate
-  dataAccessRequirements (array of {role, accessLevel, condition})
-  aiModelSelectionCriteria (string): Model selection criteria
-  aiEvalCriteria (string): Evaluation criteria
-  aiFallbackBehavior (string): Fallback behavior
-  aiLabelingAnnotationNeeds (string): Labeling needs
-  aiBiasFairness (string): Bias & fairness
+Purpose: decide how the PRD will be built. Decision-dense; no novel-length architecture essays.
+Reference PRD / charter shortName and objectives when choices trade off against them.
 
-Section 7 - Rollout & Integrations (section7):
-  integrationPoints (array of {system, integrationType, protocol}): Integration points
-  thirdPartyDependencies (array of {dependency, version, notes}): Third-party deps
-  releaseStrategy (string): Release strategy
-  keyMilestones (array of {milestone, date, owner}): Milestones
-  rollbackPlan (string): Rollback plan
-  risks (array of {risk, likelihood (H|M|L), impact (H|M|L), mitigation}): Risks
-  openQuestions (array of {question, owner, dueDate, status}): Open questions
+HARD LENGTH: ≤ ~2000–3000 words unless asked for deep dive.
 
-Section 8 - Review & Sign-off (section8):
-  prdStatus ("draft"|"in-review"|"approved"|"needs-revision"|""): PRD status
-  reviewNotes (string): Review notes
-  signatures (array of {name, role, signature, date}): Signatures`
+Suggested structure:
+1. Architecture summary (heading + paragraphs) + key components
+2. Data design — stores, core entities, retention
+3. Model / AI design (if applicable) — selection, eval, fallback
+4. APIs & interfaces — endpoints / contracts (bullets)
+5. Infrastructure & deployment — hosting, scaling, CI/CD, monitoring, security
+6. Key design decisions — callouts with rationale / alternatives considered
+7. Risks & open questions — riskList
+8. Design review / sign-off — callout
 
+Prefer custom blocks for decisions, scope, risks. Do not invent new block types.`
 
-export const SYSTEM_DESIGN_GUIDE = `SYSTEM DESIGN FIELDS:
+export const DEV_GUIDE = `DEVELOPMENT NOTES — canvas
 
-Section 1 - Architecture Overview (section1):
-  architectureSummary (string): High-level architecture description
-  components (array of {name, responsibility, technology}): Main components/services
-  dataFlow (string): How data moves through the system
-  keyDecisions (array of {decision, rationale, alternatives}): Key design decisions
+Purpose: implementation plan and working notes against System Design + PRD.
+Keep actionable: spikes, milestones, integration checklist, demo script.
 
-Section 2 - Data Design (section2):
-  dataStores (array of {store, type, purpose}): Databases/caches/queues
-  dataModels (array of {entity, fields, notes}): Core entities and their fields
-  dataFlowDetails (string): Detailed data lifecycle
-  retentionPolicy (string): Retention & deletion policy
+Suggested structure:
+1. Build plan / milestones
+2. Spikes & unknowns
+3. Implementation notes by component
+4. Integration checklist
+5. Demo / internal review criteria
+6. Open blockers — riskList or callouts`
 
-Section 3 - Model & AI Design (section3):
-  modelSelection (string): Which model(s) will be used
-  modelRationale (string): Why this model
-  trainingApproach (string): Training/fine-tuning approach
-  evalStrategy (string): How model quality is measured
-  fallbackBehavior (string): Behavior on failure/low confidence
-  promptStrategy (string): Prompting/interaction strategy
+export const QA_GUIDE = `QA / VERIFICATION — canvas
 
-Section 4 - APIs & Interfaces (section4):
-  endpoints (array of {method, path, purpose, auth}): API endpoints
-  externalIntegrations (array of {service, purpose, protocol}): External integrations
-  contracts (string): Request/response contracts & schemas
+Purpose: prove the build meets PRD acceptance criteria and charter objectives.
+Evidence over prose.
 
-Section 5 - Infrastructure & Deployment (section5):
-  hostingEnvironment (string): Where it runs
-  scalingStrategy (string): How it scales
-  cicdPipeline (string): Build & deployment pipeline
-  monitoring (string): Logging, metrics, alerting
-  securityMeasures (array of {measure, description}): Security measures
-  estimatedCost (string): Rough infra cost estimate
+Suggested structure:
+1. Test plan overview
+2. Acceptance criteria checklist (trace to PRD)
+3. Model / AI eval notes (if applicable)
+4. Regression / edge cases
+5. Defects & risks — riskList
+6. Sign-off — callout`
 
-Section 6 - Review & Sign-off (section6):
-  designStatus ("draft"|"in-review"|"approved"|"needs-revision"|""): Design status
-  reviewNotes (string): Review notes
-  signatures (array of {name, role, signature, date}): Signatures`
+export const POST_DEV_GUIDE = `POST DEV / HANDOVER — canvas
 
+Purpose: ship, monitor, and hand over. Close the loop on the original business case.
+
+Suggested structure:
+1. Release plan
+2. Deployment steps / rollback
+3. Monitoring & alerts
+4. Runbooks / ownership
+5. Stakeholder handover notes
+6. Follow-ups vs charter objectives — callout or kpiGrid`
 
 export function getFieldGuide(phase: string): string {
   if (phase === 'project-charter') return CHARTER_GUIDE
   if (phase === 'prd') return PRD_GUIDE
   if (phase === 'system-design') return SYSTEM_DESIGN_GUIDE
+  if (phase === 'dev') return DEV_GUIDE
+  if (phase === 'qa') return QA_GUIDE
+  if (phase === 'post-dev') return POST_DEV_GUIDE
   return ''
 }

@@ -1,9 +1,9 @@
 {
-  "name": "req-gath-sys",
-  "displayName": "Req-Gath-Sys Pipeline",
-  "description": "AI Project Requirements Gathering System — 6-phase pipeline with gate-based phase unlocking",
+  "name": "charter-ai",
+  "displayName": "Charter Ai",
+  "description": "Charter Ai — AI-assisted requirements pipeline (Charter → PRD → System Design → Dev → QA → Post Dev)",
   "version": "1.0.0",
-  "publisher": "ascen",
+  "publisher": "charter-ai",
   "private": true,
   "type": "module",
   "engines": {
@@ -17,35 +17,42 @@
   "contributes": {
     "commands": [
       {
-        "command": "req-gath-sys.openPipeline",
-        "title": "Req-Gath-Sys: Open Pipeline"
+        "command": "charter-ai.openPipeline",
+        "title": "Charter Ai: Open Pipeline"
       },
       {
-        "command": "req-gath-sys.initializeWorkspace",
-        "title": "Req-Gath-Sys: Initialize Workspace"
+        "command": "charter-ai.initializeWorkspace",
+        "title": "Charter Ai: Initialize Workspace"
       },
       {
-        "command": "req-gath-sys.indexCodebase",
-        "title": "Req-Gath-Sys: Index Codebase"
+        "command": "charter-ai.indexCodebase",
+        "title": "Charter Ai: Index Codebase"
       },
       {
-        "command": "req-gath-sys.configureApiKey",
-        "title": "Req-Gath-Sys: Configure API Key"
+        "command": "charter-ai.configureApiKey",
+        "title": "Charter Ai: Configure API Key"
+      },
+      {
+        "command": "charter-ai.insertDependencyDiagram",
+        "title": "Charter Ai: Insert Module Dependency Diagram"
       }
     ],
     "menus": {
       "commandPalette": [
         {
-          "command": "req-gath-sys.openPipeline"
+          "command": "charter-ai.openPipeline"
         },
         {
-          "command": "req-gath-sys.initializeWorkspace"
+          "command": "charter-ai.initializeWorkspace"
         },
         {
-          "command": "req-gath-sys.indexCodebase"
+          "command": "charter-ai.indexCodebase"
         },
         {
-          "command": "req-gath-sys.configureApiKey"
+          "command": "charter-ai.configureApiKey"
+        },
+        {
+          "command": "charter-ai.insertDependencyDiagram"
         }
       ]
     }
@@ -53,7 +60,7 @@
   "scripts": {
     "dev": "vite",
     "build:webview": "vite build",
-    "build:extension": "esbuild extension/extension.ts --bundle --outfile=out/extension.cjs --external:vscode --format=cjs --platform=node --tsconfig=tsconfig.extension.json",
+    "build:extension": "esbuild extension/extension.ts --bundle --outfile=out/extension.cjs --external:vscode --external:mermaid --format=cjs --platform=node --tsconfig=tsconfig.extension.json",
     "build": "npm run build:extension && npm run build:webview",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -68,6 +75,7 @@
     "@mantine/hooks": "^9.4.2",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
+    "mermaid": "^11.16.0",
     "openai": "^4.104.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"

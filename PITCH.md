@@ -1,4 +1,4 @@
-# Req-Gath-Sys — AI-Native Requirements Gathering
+# Charter Ai — AI-Native Requirements Gathering
 
 ## The Problem
 
@@ -6,7 +6,7 @@ Teams spend weeks writing project charters and PRDs. The format fights you — b
 
 ## What It Is
 
-Req-Gath-Sys is a VS Code extension that turns requirements gathering from a document-writing exercise into a code-aware AI-assisted workflow.
+Charter Ai is a VS Code extension that turns requirements gathering from a document-writing exercise into a code-aware AI-assisted workflow.
 
 ```
 [write requirements] ←→ [AI fills forms from context] ←→ [linked to codebase]

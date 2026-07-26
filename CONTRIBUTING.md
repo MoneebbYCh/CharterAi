@@ -1,6 +1,6 @@
-# Contributing to Req-Gath-Sys
+# Contributing to Charter Ai
 
-Req-Gath-Sys is a VS Code extension with two layers. Before contributing, read
+Charter Ai is a VS Code extension with two layers. Before contributing, read
 [`ARCHITECTURE.md`](ARCHITECTURE.md) for the full picture. This guide covers setup,
 build commands, and where each kind of change belongs.
 
@@ -46,12 +46,12 @@ VS Code, so export the key before launching.
 
 **Option B — VS Code SecretStorage (better UX):**
 
-Run the command palette action **"Req-Gath-Sys: Configure API Key"**.
+Run the command palette action **"Charter Ai: Configure API Key"**.
 
 Keys resolve in this order: SecretStorage (passed by the extension) →
 provider env var → generic `REQ_GATH_SYS_API_KEY` / `LLM_API_KEY`.
 
-Active provider/model lives in `.req-gath-sys/config.json`:
+Active provider/model lives in `.charter-ai/config.json`:
 
 ```json
 { "llm": { "provider": "deepseek", "model": null } }
@@ -68,7 +68,7 @@ Active provider/model lives in `.req-gath-sys/config.json`:
 | `npm run lint` | ESLint over the project |
 
 To run the extension: open this folder in VS Code and press `F5` (Extension
-Development Host), then run **"Req-Gath-Sys: Open Pipeline"** from the command palette.
+Development Host), then run **"Charter Ai: Open Pipeline"** from the command palette.
 
 ## Where changes go (playbook)
 
@@ -113,7 +113,7 @@ Never put business logic in `extension.ts` — only route.
 ### Add a new LLM provider
 
 Only edit the `PROVIDERS` registry in [`extension/ai/llmClient.ts`](extension/ai/llmClient.ts).
-No webview changes needed; users select it in `.req-gath-sys/config.json`.
+No webview changes needed; users select it in `.charter-ai/config.json`.
 
 ## Conventions
 
@@ -125,7 +125,7 @@ No webview changes needed; users select it in `.req-gath-sys/config.json`.
 - **Workspace root** is always resolved by the extension and passed to the
   persistence/AI functions.
 - **Dual persistence:** the webview writes to `localStorage` (cache) and the extension writes
-  `.req-gath-sys/*.json` (source of truth on disk).
+  `.charter-ai/*.json` (source of truth on disk).
 - **Don't edit** `out/extension.cjs` or `dist/` — always rebuild.
 
 ## Before you open a PR

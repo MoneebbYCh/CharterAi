@@ -3,7 +3,8 @@ import { getDefaultChoiceOptions, getDefaultStringOptions } from '../data/option
 import { getVscodeApi } from '../utils/vscodeApi'
 
 const VSCode = getVscodeApi()
-const STORAGE_KEY = 'ascen-charter-custom-options-v1'
+const STORAGE_KEY = 'charter-ai-custom-options-v1'
+const LEGACY_STORAGE_KEY = 'ascen-charter-custom-options-v1'
 
 type StringOptionKey = 'hml' | 'raci' | 'assumptionClass' | 'questionStatus'
 type ChoiceOptionKey = 'projectType' | 'priority' | 'roadmapStatus' | 'appetite' | 'gateDecision' | 'prdStatus'
@@ -16,7 +17,7 @@ type Store = {
 function loadStore(): Store {
   try {
     if (VSCode) return { strings: {}, choices: {} }
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY)
     if (!raw) return { strings: {}, choices: {} }
     return JSON.parse(raw) as Store
   } catch {

@@ -1,14 +1,24 @@
-/** BlockNote document persisted for canvas phases (Charter Option A). */
+/** BlockNote document persisted for canvas phases. */
 
 export type BlockNoteBlock = Record<string, unknown>
+
+/** Stable IDs for later traceability across phases. */
+export interface CharterAnchors {
+  businessCaseId?: string
+  objectivesId?: string
+  shortName?: string
+  [key: string]: string | undefined
+}
 
 export interface CanvasDocument {
   version: 1
   kind: 'blocknote'
   blocks: BlockNoteBlock[]
+  anchors?: CharterAnchors
 }
 
-export const CHARTER_DOC_STORAGE_KEY = 'ascen-charter-doc-v1'
+/** @deprecated Use CANVAS_PHASES['project-charter'].storageKey */
+export const CHARTER_DOC_STORAGE_KEY = 'charter-ai-charter-doc-v1'
 
 export function emptyCanvasDocument(): CanvasDocument {
   return {
@@ -20,6 +30,7 @@ export function emptyCanvasDocument(): CanvasDocument {
         content: '',
       },
     ],
+    anchors: {},
   }
 }
 
@@ -37,6 +48,7 @@ export function toCanvasDocument(data: unknown): CanvasDocument {
       version: 1,
       kind: 'blocknote',
       blocks: data.blocks.length > 0 ? data.blocks : emptyCanvasDocument().blocks,
+      anchors: data.anchors && typeof data.anchors === 'object' ? data.anchors : {},
     }
   }
   return emptyCanvasDocument()
@@ -44,6 +56,11 @@ export function toCanvasDocument(data: unknown): CanvasDocument {
 
 export function documentHasContent(doc: CanvasDocument): boolean {
   return doc.blocks.some((block) => {
+    const type = String(block.type || '')
+    // Custom prop-only blocks count as content.
+    if (['kpiGrid', 'scopeBounds', 'stakeholderTable', 'riskList', 'callout', 'diagram'].includes(type)) {
+      return true
+    }
     const content = block.content
     if (typeof content === 'string') return content.trim().length > 0
     if (Array.isArray(content)) {

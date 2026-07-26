@@ -1,6 +1,6 @@
-# Req-Gath-Sys Architecture
+# Charter Ai Architecture
 
-Req-Gath-Sys is a VS Code extension that guides teams through a 6-phase requirements pipeline
+Charter Ai is a VS Code extension that guides teams through a 6-phase requirements pipeline
 (Charter → PRD → System Design → Dev → QA → Post Dev). It is built in two layers:
 
 1. **Webview (React + Vite)** — the UI: forms, pages, chat panel.
@@ -12,7 +12,7 @@ All AI work uses an OpenAI-compatible provider (DeepSeek by default, Kimi/local 
 
 ```mermaid
 ---
-title: Req-Gath-Sys System Architecture
+title: Charter Ai System Architecture
 ---
 graph TB
   subgraph WEBVIEW["Webview (React + Vite)"]
@@ -44,7 +44,7 @@ graph TB
   subgraph VSCODE["VS Code Extension Host (TS)"]
     EXT["extension/extension.ts<br/>activate() + WebviewPanel + message router"]
     PROTO["extension/protocol.ts<br/>IPC message types"]
-    FSTATE["extension/formStateManager.ts<br/>.req-gath-sys/*.json CRUD"]
+    FSTATE["extension/formStateManager.ts<br/>.charter-ai/*.json CRUD"]
     CI["extension/codeIndexer.ts<br/>madar fork + TS Compiler AST"]
     PDF["extension/pdfExportHandler.ts<br/>VS Code save dialog"]
     AKM["extension/apiKeyManager.ts<br/>SecretStorage (optional)"]
@@ -58,7 +58,7 @@ graph TB
   end
 
   subgraph DISK["Workspace Disk"]
-    STATE[".req-gath-sys/<br/>charter.json / prd.json /<br/>custom-options.json / config.json"]
+    STATE[".charter-ai/<br/>charter.json / prd.json /<br/>custom-options.json / config.json"]
     GRAPH["out/graph.json<br/>(madar)"]
   end
 
@@ -103,7 +103,7 @@ sequenceDiagram
   participant E as Extension (extension.ts)
   participant A as ai/agent.ts
   participant LM as LLM (OpenAI-compatible)
-  participant FS as .req-gath-sys/
+  participant FS as .charter-ai/
 
   U->>W: type message in ChatPanel
   W->>W: useChat.sendMessage()
@@ -133,7 +133,7 @@ sequenceDiagram
   participant W as Webview (useFormState)
   participant E as Extension (extension.ts)
   participant FSM as formStateManager.ts
-  participant FS as .req-gath-sys/
+  participant FS as .charter-ai/
 
   Note over W: edit → debounced 500ms
   W->>E: postMessage({ type:'saveCharter', data })
@@ -153,7 +153,7 @@ Routed in `extension/extension.ts` (`handleMessage`):
 
 | Message type | Purpose |
 |--------------|---------|
-| `initializeWorkspace` (command) | Create `.req-gath-sys/` + default `config.json` |
+| `initializeWorkspace` (command) | Create `.charter-ai/` + default `config.json` |
 | `loadCharter` / `saveCharter` | Charter JSON CRUD |
 | `loadPrd` / `savePrd` | PRD JSON CRUD (load also returns charter for context) |
 | `loadForm` / `saveForm` | Generic per-phase JSON CRUD (e.g. system-design) |
@@ -176,7 +176,7 @@ is a one-line change per provider.
 | `kimi` | `https://api.moonshot.ai/v1` | `kimi-k2.6` | `MOONSHOT_API_KEY` |
 | `local` | `http://localhost:11434/v1` | `llama3.2` | (none) |
 
-- Active provider/model: `.req-gath-sys/config.json` → `{ "llm": { "provider": "deepseek", "model": null } }`.
+- Active provider/model: `.charter-ai/config.json` → `{ "llm": { "provider": "deepseek", "model": null } }`.
 - API key resolution order: SecretStorage (passed by the extension) → provider env var → generic `REQ_GATH_SYS_API_KEY` / `LLM_API_KEY`.
 
 ## Build Pipeline

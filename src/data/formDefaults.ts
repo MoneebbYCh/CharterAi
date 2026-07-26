@@ -1,6 +1,6 @@
 import type { FormData } from '../types/form'
 
-export const STORAGE_KEY = 'ascen-project-charter-v2'
+export const STORAGE_KEY = 'charter-ai-project-charter-v2'
 
 export const SECTION_LABELS = [
   { id: 1, title: 'Project Identity', subtitle: 'Budget · Team · Milestones' },

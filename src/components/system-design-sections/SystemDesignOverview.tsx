@@ -69,7 +69,7 @@ export function SystemDesignOverview({ data, onNavigate, onProceedToDev }: Props
                       {v.complete ? '✓ Complete' : `${v.filled}/${v.total}`}
                     </span>
                   </div>
-                  <p className="text-[11px] text-on-surface-variant opacity-70 mt-1">{section.subtitle}</p>
+                  <p className="text-[11px] text-on-background/75 mt-1">{section.subtitle}</p>
                 </button>
               )
             })}
@@ -95,7 +95,7 @@ export function SystemDesignOverview({ data, onNavigate, onProceedToDev }: Props
               </button>
             )}
             {locked && (
-              <p className="text-[11px] text-on-surface-variant opacity-70 text-center">
+              <p className="text-[11px] text-on-background/75 text-center">
                 Complete sections 1–5 to unlock sign-off.
               </p>
             )}

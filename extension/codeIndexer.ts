@@ -3,6 +3,7 @@ import * as fs from 'fs'
 import * as crypto from 'crypto'
 import * as ts from 'typescript'
 import { spawn } from 'child_process'
+import { LEGACY_STATE_DIR, STATE_DIR } from './brand'
 
 export interface FileEntry {
   path: string
@@ -172,26 +173,32 @@ export class CodeIndexer {
   }
 
   async loadIndex(): Promise<CodeIndex | null> {
-    const indexPath = this.indexFilePath()
-    if (!fs.existsSync(indexPath)) return null
-    try {
-      const raw = fs.readFileSync(indexPath, 'utf-8')
-      return JSON.parse(raw) as CodeIndex
-    } catch {
-      return null
+    for (const indexPath of [this.indexFilePath(), this.legacyIndexFilePath()]) {
+      if (!fs.existsSync(indexPath)) continue
+      try {
+        const raw = fs.readFileSync(indexPath, 'utf-8')
+        return JSON.parse(raw) as CodeIndex
+      } catch {
+        /* try next */
+      }
     }
+    return null
   }
 
   private indexFilePath(): string {
-    return path.join(this.workspaceRoot, '.req-gath-sys', 'code-index.json')
+    return path.join(this.workspaceRoot, STATE_DIR, 'code-index.json')
   }
 
   private cacheFilePath(): string {
-    return path.join(this.workspaceRoot, '.req-gath-sys', 'code-index-cache.json')
+    return path.join(this.workspaceRoot, STATE_DIR, 'code-index-cache.json')
+  }
+
+  private legacyIndexFilePath(): string {
+    return path.join(this.workspaceRoot, LEGACY_STATE_DIR, 'code-index.json')
   }
 
   private async writeIndex(index: CodeIndex): Promise<void> {
-    const dir = path.join(this.workspaceRoot, '.req-gath-sys')
+    const dir = path.join(this.workspaceRoot, STATE_DIR)
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
     fs.writeFileSync(this.indexFilePath(), JSON.stringify(index, null, 2), 'utf-8')
     fs.writeFileSync(
@@ -255,7 +262,16 @@ export class CodeIndexer {
   }
 
   private collectSourceFiles(): string[] {
-    const ignoreDirs = new Set(['node_modules', 'dist', 'out', '.git', '.req-gath-sys', 'graphify-out', '.vscode'])
+    const ignoreDirs = new Set([
+      'node_modules',
+      'dist',
+      'out',
+      '.git',
+      STATE_DIR,
+      LEGACY_STATE_DIR,
+      'graphify-out',
+      '.vscode',
+    ])
     const results: string[] = []
 
     const walk = (dir: string) => {

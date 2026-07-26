@@ -31,7 +31,7 @@ export function PhaseSidebar({ data, activeView, onNavigate }: PhaseSidebarProps
         <h2 className="text-base font-bold text-on-background truncate" style={{ fontFamily: 'var(--font-headline)' }}>
           {projectName}
         </h2>
-        <p className="text-[11px] text-on-surface-variant opacity-70 truncate" style={{ fontFamily: 'var(--font-label)' }}>
+        <p className="text-[11px] text-on-background/80 truncate" style={{ fontFamily: 'var(--font-label)' }}>
           {projectCode}
         </p>
       </div>
@@ -43,7 +43,7 @@ export function PhaseSidebar({ data, activeView, onNavigate }: PhaseSidebarProps
           className={`text-left p-2 m-2 flex items-center gap-3 border-2 transition-all ${
             activeView === 'overview'
               ? 'border-on-background bg-surface text-primary font-bold mac-window-shadow'
-              : 'border-transparent text-on-surface-variant hover:border-on-background hover:bg-surface-container-high'
+              : 'border-transparent text-on-background/80 hover:border-on-background hover:bg-surface-container-high'
           }`}
         >
           <span className="material-symbols-outlined">dashboard</span>
@@ -64,7 +64,7 @@ export function PhaseSidebar({ data, activeView, onNavigate }: PhaseSidebarProps
               className={`text-left p-2 m-2 flex items-center gap-3 border-2 transition-all ${
                 isActive
                   ? 'border-on-background bg-surface text-primary font-bold mac-window-shadow'
-                  : 'border-transparent text-on-surface-variant hover:border-on-background hover:bg-surface-container-high'
+                  : 'border-transparent text-on-background/80 hover:border-on-background hover:bg-surface-container-high'
               }`}
             >
               <span className="material-symbols-outlined">{SECTION_ICONS[section.id] ?? 'description'}</span>

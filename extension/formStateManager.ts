@@ -1,19 +1,20 @@
 import * as vscode from 'vscode'
 import * as path from 'path'
 import type { CustomOptionsStorage } from './protocol'
+import { LEGACY_STATE_DIR, STATE_DIR } from './brand'
 
-const STATE_DIR = '.req-gath-sys'
 const CONFIG_FILE = 'config.json'
 const CHARTER_FILE = 'charter.json'
 const PRD_FILE = 'prd.json'
 const CUSTOM_OPTIONS_FILE = 'custom-options.json'
 
-// Generic phase -> storage filename map. Charter and PRD keep their dedicated
-// helpers for backward compatibility; new phases use loadForm / saveForm.
 const PHASE_FILES: Record<string, string> = {
   'project-charter': CHARTER_FILE,
   prd: PRD_FILE,
   'system-design': 'system-design.json',
+  dev: 'dev.json',
+  qa: 'qa.json',
+  'post-dev': 'post-dev.json',
 }
 
 export interface LlmSettings {
@@ -29,8 +30,12 @@ function defaultConfig(): WorkspaceConfig {
   return { llm: { provider: 'deepseek', model: null } }
 }
 
-function stateDir(workspaceRoot: string): string {
+function primaryStateDir(workspaceRoot: string): string {
   return path.join(workspaceRoot, STATE_DIR)
+}
+
+function legacyStateDir(workspaceRoot: string): string {
+  return path.join(workspaceRoot, LEGACY_STATE_DIR)
 }
 
 async function ensureDir(dir: string): Promise<void> {
@@ -67,9 +72,18 @@ async function writeJson(filePath: string, data: unknown): Promise<void> {
   await vscode.workspace.fs.writeFile(uri, bytes)
 }
 
+/** Prefer `.charter-ai/`; fall back to legacy `.req-gath-sys/` for reads. */
+async function readStateJson<T>(workspaceRoot: string, filename: string): Promise<T | null> {
+  const primary = await readJson<T>(path.join(primaryStateDir(workspaceRoot), filename))
+  if (primary !== null) return primary
+  return readJson<T>(path.join(legacyStateDir(workspaceRoot), filename))
+}
+
 export async function initWorkspace(workspaceRoot: string): Promise<boolean> {
-  const dir = stateDir(workspaceRoot)
+  const dir = primaryStateDir(workspaceRoot)
   if (await pathExists(dir)) return false
+  // Already initialized under the legacy folder counts as initialized.
+  if (await pathExists(legacyStateDir(workspaceRoot))) return false
   await ensureDir(dir)
   const configPath = path.join(dir, CONFIG_FILE)
   if (!(await pathExists(configPath))) {
@@ -79,55 +93,54 @@ export async function initWorkspace(workspaceRoot: string): Promise<boolean> {
 }
 
 export async function loadConfig(workspaceRoot: string): Promise<WorkspaceConfig> {
-  const data = await readJson<WorkspaceConfig>(path.join(stateDir(workspaceRoot), CONFIG_FILE))
+  const data = await readStateJson<WorkspaceConfig>(workspaceRoot, CONFIG_FILE)
   if (data && typeof data === 'object') return data
   return defaultConfig()
 }
 
 export async function loadCharter(workspaceRoot: string): Promise<unknown | null> {
-  return readJson(path.join(stateDir(workspaceRoot), CHARTER_FILE))
+  return readStateJson(workspaceRoot, CHARTER_FILE)
 }
 
 export async function saveCharter(workspaceRoot: string, data: unknown): Promise<void> {
-  await writeJson(path.join(stateDir(workspaceRoot), CHARTER_FILE), data)
+  await writeJson(path.join(primaryStateDir(workspaceRoot), CHARTER_FILE), data)
 }
 
 export async function loadPrd(
   workspaceRoot: string,
 ): Promise<{ prd: unknown | null; charter: unknown | null }> {
-  const dir = stateDir(workspaceRoot)
   const [prd, charter] = await Promise.all([
-    readJson(path.join(dir, PRD_FILE)),
-    readJson(path.join(dir, CHARTER_FILE)),
+    readStateJson(workspaceRoot, PRD_FILE),
+    readStateJson(workspaceRoot, CHARTER_FILE),
   ])
   return { prd, charter }
 }
 
 export async function savePrd(workspaceRoot: string, data: unknown): Promise<void> {
-  await writeJson(path.join(stateDir(workspaceRoot), PRD_FILE), data)
+  await writeJson(path.join(primaryStateDir(workspaceRoot), PRD_FILE), data)
 }
 
 export async function loadForm(workspaceRoot: string, phase: string): Promise<unknown | null> {
   const filename = PHASE_FILES[phase]
   if (!filename) return null
-  return readJson(path.join(stateDir(workspaceRoot), filename))
+  return readStateJson(workspaceRoot, filename)
 }
 
 export async function saveForm(workspaceRoot: string, phase: string, data: unknown): Promise<void> {
   const filename = PHASE_FILES[phase]
   if (!filename) throw new Error(`Unknown phase: ${phase}`)
-  await writeJson(path.join(stateDir(workspaceRoot), filename), data)
+  await writeJson(path.join(primaryStateDir(workspaceRoot), filename), data)
 }
 
 export async function loadCustomOptions(workspaceRoot: string): Promise<CustomOptionsStorage | null> {
-  return readJson<CustomOptionsStorage>(path.join(stateDir(workspaceRoot), CUSTOM_OPTIONS_FILE))
+  return readStateJson<CustomOptionsStorage>(workspaceRoot, CUSTOM_OPTIONS_FILE)
 }
 
 export async function saveCustomOptions(
   workspaceRoot: string,
   data: CustomOptionsStorage,
 ): Promise<void> {
-  await writeJson(path.join(stateDir(workspaceRoot), CUSTOM_OPTIONS_FILE), data)
+  await writeJson(path.join(primaryStateDir(workspaceRoot), CUSTOM_OPTIONS_FILE), data)
 }
 
 export async function exportDir(): Promise<string | null> {

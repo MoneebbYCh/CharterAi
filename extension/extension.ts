@@ -16,6 +16,8 @@ import {
   savePrd,
 } from './formStateManager'
 import { processChat } from './ai/agent'
+import { diagramBlockFromProjection, projectModuleDependencyMermaid } from './ai/mermaidProject'
+import { parseMermaid } from './ai/mermaidValidate'
 import type { WebviewToExtensionMessage, ExtensionToWebviewMessage, CustomOptionsStorage } from './protocol'
 
 export function activate(context: vscode.ExtensionContext) {
@@ -37,6 +39,7 @@ export function activate(context: vscode.ExtensionContext) {
       `img-src ${webview.cspSource} data: blob:`,
       `worker-src ${webview.cspSource} blob:`,
       `connect-src ${webview.cspSource}`,
+      `wasm-src ${webview.cspSource} blob:`,
     ].join('; ')
 
     html = html.replace('<head>', `<head><meta http-equiv="Content-Security-Policy" content="${csp}">`)
@@ -76,6 +79,15 @@ export function activate(context: vscode.ExtensionContext) {
         break
       }
       case 'saveForm': {
+        await saveForm(ws, msg.phase, msg.data)
+        break
+      }
+      case 'loadCanvas': {
+        const data = await loadForm(ws, msg.phase)
+        postMessage({ type: 'loadCanvas', phase: msg.phase, data })
+        break
+      }
+      case 'saveCanvas': {
         await saveForm(ws, msg.phase, msg.data)
         break
       }
@@ -152,8 +164,23 @@ export function activate(context: vscode.ExtensionContext) {
           })
 
           if (result.reload) {
-            if (result.reload.type === 'load_charter') {
+            if (result.reload.type === 'load_canvas' && result.reload.phase) {
+              postMessage({
+                type: 'loadCanvas',
+                phase: result.reload.phase,
+                data: result.reload.data,
+              })
+              // Keep legacy charter channel in sync for older listeners.
+              if (result.reload.phase === 'project-charter') {
+                postMessage({ type: 'loadCharter', data: result.reload.data })
+              }
+            } else if (result.reload.type === 'load_charter') {
               postMessage({ type: 'loadCharter', data: result.reload.data })
+              postMessage({
+                type: 'loadCanvas',
+                phase: 'project-charter',
+                data: result.reload.data,
+              })
             } else if (result.reload.type === 'load_prd') {
               postMessage({
                 type: 'loadPrd',
@@ -186,15 +213,15 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('req-gath-sys.openPipeline', () => {
+    vscode.commands.registerCommand('charter-ai.openPipeline', () => {
       if (panel) {
         panel.reveal(vscode.ViewColumn.One)
         return
       }
 
       panel = vscode.window.createWebviewPanel(
-        'reqGathSysPanel',
-        'Req-Gath-Sys Pipeline',
+        'charterAiPanel',
+        'Charter Ai',
         vscode.ViewColumn.One,
         {
           enableScripts: true,
@@ -212,11 +239,11 @@ export function activate(context: vscode.ExtensionContext) {
       })
     }),
 
-    vscode.commands.registerCommand('req-gath-sys.configureApiKey', async () => {
+    vscode.commands.registerCommand('charter-ai.configureApiKey', async () => {
       await promptForApiKey(context)
     }),
 
-    vscode.commands.registerCommand('req-gath-sys.indexCodebase', async () => {
+    vscode.commands.registerCommand('charter-ai.indexCodebase', async () => {
       const ws = workspaceRoot()
       if (!ws) { vscode.window.showErrorMessage('Open a workspace first.'); return }
 
@@ -236,20 +263,105 @@ export function activate(context: vscode.ExtensionContext) {
       })
     }),
 
-    vscode.commands.registerCommand('req-gath-sys.initializeWorkspace', async () => {
+    vscode.commands.registerCommand('charter-ai.initializeWorkspace', async () => {
       const ws = workspaceRoot()
       if (!ws) { vscode.window.showErrorMessage('Open a workspace first.'); return }
 
       try {
         const created = await initWorkspace(ws)
         if (created) {
-          vscode.window.showInformationMessage('Req-Gath-Sys workspace initialized!')
+          vscode.window.showInformationMessage('Charter Ai workspace initialized!')
         } else {
-          vscode.window.showInformationMessage('Req-Gath-Sys already initialized in this workspace.')
+          vscode.window.showInformationMessage('Charter Ai already initialized in this workspace.')
         }
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err)
         vscode.window.showErrorMessage(`Failed to initialize workspace: ${errorMsg}`)
+      }
+    }),
+
+    vscode.commands.registerCommand('charter-ai.insertDependencyDiagram', async () => {
+      const ws = workspaceRoot()
+      if (!ws) {
+        vscode.window.showErrorMessage('Open a workspace first.')
+        return
+      }
+
+      const phasePick = await vscode.window.showQuickPick(
+        [
+          { label: 'System Design', description: 'system-design', id: 'system-design' },
+          { label: 'PRD', description: 'prd', id: 'prd' },
+          { label: 'Project Charter', description: 'project-charter', id: 'project-charter' },
+          { label: 'Development', description: 'dev', id: 'dev' },
+        ],
+        { placeHolder: 'Insert module dependency diagram into which phase canvas?' },
+      )
+      if (!phasePick) return
+      const phase = phasePick.id
+
+      const focus = await vscode.window.showInputBox({
+        prompt: 'Optional path focus (e.g. extension/ or src/hooks). Leave empty for top dependencies.',
+        placeHolder: 'src/',
+      })
+      if (focus === undefined) return
+
+      try {
+        const indexer = new CodeIndexer(ws)
+        let index = await indexer.loadIndex()
+        if (!index) {
+          index = await indexer.buildIndex()
+        }
+        const projected = projectModuleDependencyMermaid(index, {
+          focus: focus.trim() || undefined,
+          maxNodes: 20,
+        })
+        const parsed = await parseMermaid(projected.code)
+        if (!parsed.ok) {
+          vscode.window.showErrorMessage(`Generated Mermaid failed to parse: ${parsed.error}`)
+          return
+        }
+
+        const existing = await loadForm(ws, phase)
+        const blocks =
+          existing &&
+          typeof existing === 'object' &&
+          !Array.isArray(existing) &&
+          Array.isArray((existing as { blocks?: unknown }).blocks)
+            ? ([...(existing as { blocks: unknown[] }).blocks] as unknown[])
+            : [{ type: 'paragraph', content: '' }]
+
+        blocks.push({
+          type: 'heading',
+          props: { level: 2 },
+          content: projected.title,
+        })
+        blocks.push(diagramBlockFromProjection(projected))
+
+        const anchors =
+          existing &&
+          typeof existing === 'object' &&
+          !Array.isArray(existing) &&
+          (existing as { anchors?: unknown }).anchors &&
+          typeof (existing as { anchors?: unknown }).anchors === 'object'
+            ? (existing as { anchors: Record<string, string> }).anchors
+            : {}
+
+        const saved = {
+          version: 1 as const,
+          kind: 'blocknote' as const,
+          blocks,
+          anchors,
+        }
+        await saveForm(ws, phase, saved)
+        postMessage({ type: 'loadCanvas', phase, data: saved })
+
+        const trunc = projected.truncated ? ' (capped/clustered)' : ''
+        vscode.window.showInformationMessage(
+          `Inserted dependency diagram into ${phase}: ${projected.nodeCount} nodes, ${projected.edgeCount} edges${trunc}.`,
+        )
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        vscode.window.showErrorMessage(`Failed to insert diagram: ${msg}`)
       }
     }),
   )

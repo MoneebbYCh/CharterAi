@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { getVscodeApi } from '../utils/vscodeApi'
+import { BRAND_NAME } from '../brand'
 
 export interface ChatMessage {
   id: string
@@ -18,7 +19,7 @@ function nextId(): string {
 const WELCOME: ChatMessage = {
   id: nextId(),
   role: 'assistant',
-  text: "Hello! I'm your Req-Gath-Sys AI assistant. I can help fill in project charter and PRD forms — configure your API key first (command palette: Req-Gath-Sys: Configure API Key), then ask away!",
+  text: `Hello! I'm your ${BRAND_NAME} assistant. I can help draft charter, PRD, system design, and later-phase canvases — configure your API key first (command palette: ${BRAND_NAME}: Configure API Key), then ask away!`,
   timestamp: Date.now(),
 }
 
@@ -101,7 +102,7 @@ export function useChat(phase: string) {
         const timeoutMsg: ChatMessage = {
           id: nextId(),
           role: 'assistant',
-          text: 'No response received. Try again — check your API key (Req-Gath-Sys: Configure API Key) and that Python 3 with openai is installed.',
+          text: `No response received. Try again — check your API key (${BRAND_NAME}: Configure API Key).`,
           timestamp: Date.now(),
         }
         setMessages((prev) => [...prev, timeoutMsg])

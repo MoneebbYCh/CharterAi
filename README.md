@@ -1,4 +1,4 @@
-# Req-Gath-Sys
+# Charter Ai
 
 A VS Code extension that guides teams through a 6-phase project requirements pipeline
 (Charter → PRD → System Design → Dev → QA → Post Dev) with gate-based phase unlocking and
@@ -26,17 +26,17 @@ npm run build
 ```
 
 Then open this folder in VS Code, press `F5` to launch the Extension Development Host, and run
-**"Req-Gath-Sys: Open Pipeline"** from the command palette.
+**"Charter Ai: Open Pipeline"** from the command palette.
 
 ## Configuring the AI key
 
 Provide an OpenAI-compatible API key either way:
 
-- **SecretStorage (recommended):** run **"Req-Gath-Sys: Configure API Key"** from the command palette.
+- **SecretStorage (recommended):** run **"Charter Ai: Configure API Key"** from the command palette.
 - **Environment variable:** `export DEEPSEEK_API_KEY="sk-..."` (or `MOONSHOT_API_KEY` for Kimi)
   before launching VS Code.
 
-Select the active provider/model in `.req-gath-sys/config.json`:
+Select the active provider/model in `.charter-ai/config.json`:
 
 ```json
 { "llm": { "provider": "deepseek", "model": null } }

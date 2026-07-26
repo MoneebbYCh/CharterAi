@@ -1,6 +1,6 @@
 import type { PrdFormData } from '../types/prdForm'
 
-export const PRD_STORAGE_KEY = 'ascen-prd-v1'
+export const PRD_STORAGE_KEY = 'charter-ai-prd-v1'
 
 export function createInitialPrdFormData(): PrdFormData {
   return {

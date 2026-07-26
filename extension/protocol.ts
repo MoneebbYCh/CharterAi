@@ -7,17 +7,17 @@ export type View =
   | { page: 'placeholder'; phase: string }
 
 export interface CharterStorage {
-  STORAGE_KEY: 'ascen-project-charter-v2'
+  STORAGE_KEY: 'charter-ai-project-charter-v2'
   data: unknown
 }
 
 export interface PrdStorage {
-  STORAGE_KEY: 'ascen-prd-v1'
+  STORAGE_KEY: 'charter-ai-prd-v1'
   data: unknown
 }
 
 export interface CustomOptionsStorage {
-  STORAGE_KEY: 'ascen-charter-custom-options-v1'
+  STORAGE_KEY: 'charter-ai-custom-options-v1'
   strings: Partial<Record<string, string[]>>
   choices: Partial<Record<string, { value: string; label: string }[]>>
 }
@@ -26,6 +26,7 @@ export type ExtensionToWebviewMessage =
   | { type: 'loadCharter'; data: unknown }
   | { type: 'loadPrd'; data: unknown; charterData: unknown | null }
   | { type: 'loadForm'; phase: string; data: unknown }
+  | { type: 'loadCanvas'; phase: string; data: unknown }
   | { type: 'loadCustomOptions'; data: CustomOptionsStorage }
   | { type: 'navigateTo'; view: View }
   | { type: 'indexProgress'; phase: string; percent: number }
@@ -38,10 +39,12 @@ export type WebviewToExtensionMessage =
   | { type: 'saveCharter'; data: unknown }
   | { type: 'savePrd'; data: unknown }
   | { type: 'saveForm'; phase: string; data: unknown }
+  | { type: 'saveCanvas'; phase: string; data: unknown }
   | { type: 'saveCustomOptions'; data: CustomOptionsStorage }
   | { type: 'loadCharter' }
   | { type: 'loadPrd' }
   | { type: 'loadForm'; phase: string }
+  | { type: 'loadCanvas'; phase: string }
   | { type: 'loadCustomOptions' }
   | { type: 'exportPdf'; phase: 'charter' | 'prd'; buffer: ArrayBuffer }
   | { type: 'exportPdfAs'; phase: 'charter' | 'prd'; buffer: ArrayBuffer }

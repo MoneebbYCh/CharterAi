@@ -1,6 +1,6 @@
 import type { SystemDesignFormData } from '../types/systemDesignForm'
 
-export const SYSTEM_DESIGN_STORAGE_KEY = 'ascen-system-design-v1'
+export const SYSTEM_DESIGN_STORAGE_KEY = 'charter-ai-system-design-v1'
 
 export function createInitialSystemDesignFormData(): SystemDesignFormData {
   return {

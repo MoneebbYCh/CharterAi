@@ -3,108 +3,70 @@ import { getFieldGuide } from './fieldGuides'
 import { CANVAS_BLOCK_CATALOG } from './blockCatalog'
 import { callLlm, type ChatMessage, type LlmConfig } from './llmClient'
 import {
-  loadCharter,
+  extractDiagramCodes,
+  FALLBACK_OVERVIEW_MERMAID,
+  parseMermaid,
+} from './mermaidValidate'
+import {
   loadConfig,
   loadForm,
-  loadPrd,
-  saveCharter,
   saveForm,
-  savePrd,
 } from '../formStateManager'
 
-const FORM_PHASES = ['prd', 'system-design'] as const
-const CANVAS_PHASES = ['project-charter'] as const
+const CANVAS_PHASES = [
+  'project-charter',
+  'prd',
+  'system-design',
+  'dev',
+  'qa',
+  'post-dev',
+] as const
 
-const FORM_SYSTEM_PROMPT = `You are an AI assistant for Req-Gath-Sys, a requirements gathering system.
-Help users fill project requirements forms (PRD, system design) accurately and concisely.
-
-You MUST respond with a single JSON object and nothing else. No prose, no markdown fences.
-Shape:
-{
-  "message": "A short human-readable reply explaining what you did or answering the question",
-  "updates": {
-    "section1.projectName": "Example value"
-  }
+const PHASE_LABELS: Record<string, string> = {
+  'project-charter': 'Project Charter',
+  prd: 'Product Requirements Document (PRD)',
+  'system-design': 'System Design',
+  dev: 'Development notes',
+  qa: 'QA / verification',
+  'post-dev': 'Post Dev / handover',
 }
 
-Rules for "updates":
-- Use dot-path keys that match the field schema exactly (e.g. "section2.coreProblem").
-- Only include fields you are actually changing. Do not restate unchanged fields.
-- Match the declared type for each field: string, boolean, array, or object.
-- For array fields, provide the full array value (a list of objects/strings as described).
-- Prefer concrete, specific values inferred from the conversation and current form data.
-- If the user is only asking a question (no form change needed), set "updates": {}.
-- Never invent a field name that is not in the field schema.
+function canvasSystemPrompt(phase: string): string {
+  const label = PHASE_LABELS[phase] ?? phase
+  const charterExtra =
+    phase === 'project-charter'
+      ? `
+CHARTER-SPECIFIC RULES:
+- Dual framing: formal authorization + soft agreement on scope/timeline/budget.
+- Business Case FIRST before objectives; measurable objectives gate (number/date/binary).
+- Return anchors: { "businessCaseId", "objectivesId", "shortName" } when drafting.
+- Keep ≤ ~1500–2000 words (~5 pages).
+`
+      : `
+PHASE RULES:
+- Follow the document guidance for this phase.
+- Prefer custom blocks over long prose; keep decision-dense.
+- When useful, return "anchors" for stable cross-phase IDs (shortName, requirement ids, etc.).
+`
 
-Always return valid JSON with both "message" and "updates" keys, even when "updates" is empty.`
+  return `You are drafting the ${label} as a BlockNote canvas document for Charter Ai.
+Help the user elicit and write a clear, usable document for this pipeline phase.
 
-const CANVAS_SYSTEM_PROMPT = `You are an AI assistant for Req-Gath-Sys helping users draft a Project Charter.
-
-WHAT A CHARTER IS:
-It formally authorizes a project to exist and gives the lead authority to spend resources.
-Before the charter: an idea. After it: a sanctioned project with owner, boundary, and success criteria.
-Your job is to turn "we should build X" into "X is authorized — here is who owns it, what it covers, and how we will know it worked."
-
-DEFAULT DRAFTING BRIEF (follow unless the user asks for a narrower edit):
-Draft a complete PMI-aligned charter with purpose, measurable objectives, explicit scope in/out,
-stakeholders, milestones, budget/resources, assumptions/constraints, risks, and approval.
-
-Required structure on any full draft:
-1. Title (heading 1)
-2. Purpose / justification — callout with the business problem (not a feature wishlist)
-3. Objectives & success criteria — kpiGrid (specific, measurable, checkable later)
-4. High-level scope — scopeBounds with BOTH inScope and outOfScope (exclusions mandatory)
-5. Key stakeholders — stakeholderTable (sponsor, delivery owner/PM, major stakeholders)
-6. High-level milestones — heading + short numbered/bullet list (checkpoints only)
-7. High-level budget / resources — heading + concise paragraph or bullets
-8. Assumptions & constraints — heading + bullets; hard constraints in a warn callout
-9. High-level risks — riskList
-10. Approval / sign-off — callout naming who must approve for this to be real
-
-QUALITY RULES:
-- Reject vague objectives ("modernize the platform", "improve efficiency"). Prefer measurable targets.
-- Always state what is out of scope. Fuzzy scope is the root of creep.
-- Name authority: who can decide and spend. Do not leave ownership implied.
-- If the user is vague, still produce a strong draft with clear [PLACEHOLDER] markers and ask 1–3 sharp follow-ups in "message".
-- Prefer custom blocks over bullet lists for KPIs, scope, stakeholders, and risks.
-
-The canvas uses BlockNote. You MUST respond with a single JSON object and nothing else.
-Shape example:
+HARD CONSTRAINTS:
+- Prefer custom blocks over long prose.
+- You MUST respond with a single JSON object and nothing else (no markdown fences).
+${charterExtra}
+Response shape:
 {
-  "message": "Drafted an authorization charter. Confirm sponsor, budget ceiling, and hard launch date.",
-  "document": [
-    { "type": "heading", "props": { "level": 1 }, "content": "Project Charter — Checkout Latency" },
-    { "type": "callout", "props": { "variant": "info", "title": "Purpose" }, "content": "Authorize work to cut checkout p95 latency so conversion stops leaking at peak." },
-    { "type": "heading", "props": { "level": 2 }, "content": "Objectives & success criteria" },
-    { "type": "kpiGrid", "props": { "items": [ { "metric": "Checkout p95 latency", "target": "<800ms", "method": "APM, peak hour" } ] } },
-    { "type": "heading", "props": { "level": 2 }, "content": "Scope" },
-    { "type": "scopeBounds", "props": { "inScope": ["Checkout API path"], "outOfScope": ["Mobile redesign"] } },
-    { "type": "heading", "props": { "level": 2 }, "content": "Stakeholders" },
-    { "type": "stakeholderTable", "props": { "rows": [ { "nameRole": "Alex / Sponsor", "interest": "H", "influence": "H", "concern": "Conversion" } ] } },
-    { "type": "heading", "props": { "level": 2 }, "content": "Milestones" },
-    { "type": "numberedListItem", "content": "Baseline + target locked — Week 1" },
-    { "type": "heading", "props": { "level": 2 }, "content": "Budget & resources" },
-    { "type": "paragraph", "content": "2 backend engineers, 1 SRE consult; cap [PLACEHOLDER]." },
-    { "type": "heading", "props": { "level": 2 }, "content": "Assumptions & constraints" },
-    { "type": "bulletListItem", "content": "Assumption: production APM already covers checkout." },
-    { "type": "callout", "props": { "variant": "warn", "title": "Constraint" }, "content": "No schema migrations in peak season." },
-    { "type": "heading", "props": { "level": 2 }, "content": "Risks" },
-    { "type": "riskList", "props": { "rows": [ { "risk": "Cache invalidation bugs", "likelihood": "M", "impact": "H", "mitigation": "Feature flag + canary" } ] } },
-    { "type": "heading", "props": { "level": 2 }, "content": "Approval" },
-    { "type": "callout", "props": { "variant": "success", "title": "Sign-off required" }, "content": "Sponsor + Eng Manager must approve before spend." }
-  ]
+  "message": "What you changed + 1–3 sharp follow-ups if needed",
+  "anchors": { /* optional stable ids */ },
+  "document": [ /* full BlockNote block array, or null if Q&A only */ ]
 }
-
-Rules for "document":
-- Provide the FULL document as a BlockNote block array (not a patch).
-- If the user only asks a question and no document change is needed, set "document": null.
 
 ${CANVAS_BLOCK_CATALOG}
 
-Always return valid JSON with "message" and "document" keys.`
-
-function isFormPhase(phase: string): boolean {
-  return (FORM_PHASES as readonly string[]).includes(phase)
+If the user only asks a question and no document change is needed, set "document": null.
+Always return valid JSON with "message"; include "document" (and "anchors" when useful) when drafting/updating.`
 }
 
 function isCanvasPhase(phase: string): boolean {
@@ -116,34 +78,37 @@ function emptyCanvasDoc() {
     version: 1 as const,
     kind: 'blocknote' as const,
     blocks: [{ type: 'paragraph', content: '' }],
+    anchors: {} as Record<string, string>,
   }
 }
 
-function normalizeCanvasDoc(data: unknown): { version: 1; kind: 'blocknote'; blocks: unknown[] } {
+function normalizeCanvasDoc(data: unknown): {
+  version: 1
+  kind: 'blocknote'
+  blocks: unknown[]
+  anchors: Record<string, string>
+} {
   if (data && typeof data === 'object' && !Array.isArray(data)) {
     const d = data as Record<string, unknown>
     if (d.kind === 'blocknote' && Array.isArray(d.blocks)) {
+      const anchors =
+        d.anchors && typeof d.anchors === 'object' && !Array.isArray(d.anchors)
+          ? (d.anchors as Record<string, string>)
+          : {}
       return {
         version: 1,
         kind: 'blocknote',
         blocks: d.blocks.length > 0 ? d.blocks : emptyCanvasDoc().blocks,
+        anchors,
       }
     }
   }
   return emptyCanvasDoc()
 }
 
-async function loadFormData(workspaceRoot: string, phase: string): Promise<unknown | null> {
-  if (phase === 'project-charter') {
-    return loadCharter(workspaceRoot)
-  }
-  if (phase === 'prd') {
-    return (await loadPrd(workspaceRoot)).prd
-  }
-  if (isFormPhase(phase)) {
-    return loadForm(workspaceRoot, phase)
-  }
-  return null
+async function loadPhaseDocument(workspaceRoot: string, phase: string): Promise<unknown | null> {
+  if (!isCanvasPhase(phase)) return null
+  return loadForm(workspaceRoot, phase)
 }
 
 export async function buildMessages(
@@ -152,35 +117,22 @@ export async function buildMessages(
   workspaceRoot: string,
 ): Promise<ChatMessage[]> {
   const fieldGuide = getFieldGuide(phase)
-  const formData = await loadFormData(workspaceRoot, phase)
-  const canvas = isCanvasPhase(phase)
-  const current = canvas
-    ? JSON.stringify(normalizeCanvasDoc(formData), null, 2)
-    : formData !== null && formData !== undefined
-      ? JSON.stringify(formData, null, 2)
-      : 'No form data yet.'
+  const formData = await loadPhaseDocument(workspaceRoot, phase)
+  const current = JSON.stringify(normalizeCanvasDoc(formData), null, 2)
   const codeContext = buildCodeContext(workspaceRoot)
 
-  const parts = [
-    `USER: ${text}`,
-    '',
-  ]
+  const parts = [`USER: ${text}`, '']
 
   if (fieldGuide) {
-    parts.push(canvas ? 'Document guidance:' : 'Available form fields:', fieldGuide, '')
+    parts.push('Document guidance:', fieldGuide, '')
   }
 
-  parts.push(
-    canvas ? 'CURRENT DOCUMENT (BlockNote JSON):' : 'CURRENT FORM DATA:',
-    '```json',
-    current,
-    '```',
-  )
+  parts.push('CURRENT DOCUMENT (BlockNote JSON):', '```json', current, '```')
 
   if (codeContext) parts.push('', codeContext)
 
   return [
-    { role: 'system', content: canvas ? CANVAS_SYSTEM_PROMPT : FORM_SYSTEM_PROMPT },
+    { role: 'system', content: canvasSystemPrompt(phase) },
     { role: 'user', content: parts.join('\n') },
   ]
 }
@@ -189,10 +141,11 @@ export function parseResponse(text: string): {
   message: string
   updates: Record<string, unknown> | null
   document: unknown[] | null
+  anchors: Record<string, string> | null
 } {
   let trimmed = text.trim()
   if (!trimmed) {
-    return { message: 'No response.', updates: null, document: null }
+    return { message: 'No response.', updates: null, document: null, anchors: null }
   }
 
   const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
@@ -206,9 +159,15 @@ export function parseResponse(text: string): {
       if (parsed && typeof parsed === 'object' && typeof parsed.message === 'string') {
         const updates = parsed.updates
         const document = parsed.document
+        const anchorsRaw = parsed.anchors
 
         let nextUpdates: Record<string, unknown> | null = null
-        if (updates && typeof updates === 'object' && !Array.isArray(updates) && Object.keys(updates).length > 0) {
+        if (
+          updates &&
+          typeof updates === 'object' &&
+          !Array.isArray(updates) &&
+          Object.keys(updates).length > 0
+        ) {
           nextUpdates = updates as Record<string, unknown>
         }
 
@@ -217,14 +176,28 @@ export function parseResponse(text: string): {
           nextDocument = document
         }
 
-        return { message: parsed.message, updates: nextUpdates, document: nextDocument }
+        let nextAnchors: Record<string, string> | null = null
+        if (anchorsRaw && typeof anchorsRaw === 'object' && !Array.isArray(anchorsRaw)) {
+          nextAnchors = {}
+          for (const [k, v] of Object.entries(anchorsRaw as Record<string, unknown>)) {
+            if (typeof v === 'string' && v.trim()) nextAnchors[k] = v.trim()
+          }
+          if (Object.keys(nextAnchors).length === 0) nextAnchors = null
+        }
+
+        return {
+          message: parsed.message,
+          updates: nextUpdates,
+          document: nextDocument,
+          anchors: nextAnchors,
+        }
       }
     } catch {
       // fall through
     }
   }
 
-  return { message: trimmed, updates: null, document: null }
+  return { message: trimmed, updates: null, document: null, anchors: null }
 }
 
 export function deepMerge(target: Record<string, unknown>, updates: Record<string, unknown>): void {
@@ -233,7 +206,12 @@ export function deepMerge(target: Record<string, unknown>, updates: Record<strin
     let current = target
     for (const key of keys.slice(0, -1)) {
       const existing = current[key]
-      if (existing === null || existing === undefined || typeof existing !== 'object' || Array.isArray(existing)) {
+      if (
+        existing === null ||
+        existing === undefined ||
+        typeof existing !== 'object' ||
+        Array.isArray(existing)
+      ) {
         current[key] = {}
       }
       current = current[key] as Record<string, unknown>
@@ -243,7 +221,7 @@ export function deepMerge(target: Record<string, unknown>, updates: Record<strin
 }
 
 export interface ChatReload {
-  type: 'load_charter' | 'load_prd' | 'load_form'
+  type: 'load_canvas' | 'load_charter' | 'load_prd' | 'load_form'
   data: unknown
   charterData?: unknown
   phase?: string
@@ -278,43 +256,158 @@ export async function processChat(args: ProcessChatArgs): Promise<ChatResult> {
 
   const messages = await buildMessages(text, phase, workspaceRoot)
   const raw = await callLlm(messages, llmConfig, { jsonMode: true })
-  const { message: replyText, updates, document } = parseResponse(raw)
+  const { message: replyText, document, anchors } = parseResponse(raw)
 
   let formUpdated = false
   let reload: ChatReload | null = null
 
   if (isCanvasPhase(phase) && document) {
+    const { blocks: validatedBlocks, notes } = await validateAndFixDiagrams(
+      document,
+      llmConfig,
+      messages,
+    )
+    const existing = normalizeCanvasDoc(await loadPhaseDocument(workspaceRoot, phase))
     const saved = {
       version: 1 as const,
       kind: 'blocknote' as const,
-      blocks: document,
+      blocks: validatedBlocks,
+      anchors: anchors ?? existing.anchors ?? {},
     }
-    await saveCharter(workspaceRoot, saved)
-    reload = { type: 'load_charter', data: saved }
+    await saveForm(workspaceRoot, phase, saved)
+    reload = { type: 'load_canvas', phase, data: saved }
     formUpdated = true
-  } else if (updates && isFormPhase(phase)) {
-    const formData = await loadFormData(workspaceRoot, phase)
-    const base = formData && typeof formData === 'object' && !Array.isArray(formData)
-      ? (formData as Record<string, unknown>)
-      : {}
-    const merged = structuredClone(base)
-    deepMerge(merged, updates)
-
-    if (phase === 'prd') {
-      await savePrd(workspaceRoot, merged)
-      const charter = (await loadPrd(workspaceRoot)).charter
-      reload = { type: 'load_prd', data: merged, charterData: charter }
-    } else {
-      await saveForm(workspaceRoot, phase, merged)
-      reload = { type: 'load_form', phase, data: merged }
+    if (notes.length) {
+      return {
+        message: `${replyText}\n\n(${notes.join(' ')})`,
+        form_updated: formUpdated,
+        reload,
+      }
     }
-
-    formUpdated = true
   }
 
   return {
     message: replyText,
     form_updated: formUpdated,
     reload,
+  }
+}
+
+const DIAGRAM_FIX_RETRIES = 2
+
+/**
+ * Parse every diagram block before commit. On failure, ask the LLM to fix Mermaid
+ * (1–2 retries), then drop still-invalid diagrams rather than blanking the canvas.
+ */
+async function validateAndFixDiagrams(
+  blocks: unknown[],
+  llmConfig: LlmConfig,
+  priorMessages: ChatMessage[],
+): Promise<{ blocks: unknown[]; notes: string[] }> {
+  const notes: string[] = []
+  let next = blocks.map((b) =>
+    b && typeof b === 'object' ? { ...(b as Record<string, unknown>) } : b,
+  )
+
+  for (let attempt = 0; attempt <= DIAGRAM_FIX_RETRIES; attempt++) {
+    const diagrams = extractDiagramCodes(next)
+    const failures: { index: number; code: string; error: string }[] = []
+
+    for (const d of diagrams) {
+      const result = await parseMermaid(d.code)
+      if (!result.ok) failures.push({ ...d, error: result.error })
+    }
+
+    if (failures.length === 0) return { blocks: next, notes }
+
+    if (attempt === DIAGRAM_FIX_RETRIES) {
+      // Last resort: swap in a known-valid overview rather than deleting the block.
+      for (const f of failures) {
+        const block = next[f.index]
+        if (!block || typeof block !== 'object') continue
+        const b = { ...(block as Record<string, unknown>) }
+        const props =
+          b.props && typeof b.props === 'object' && !Array.isArray(b.props)
+            ? { ...(b.props as Record<string, unknown>) }
+            : {}
+        props.code = FALLBACK_OVERVIEW_MERMAID
+        if (typeof props.title !== 'string' || !props.title.trim()) {
+          props.title = 'High-level overview'
+        }
+        props.source = 'llm'
+        b.type = 'diagram'
+        b.props = props
+        next[f.index] = b
+      }
+      notes.push(
+        `Replaced ${failures.length} invalid Mermaid diagram(s) with a simple overview after failed parse retries.`,
+      )
+      return { blocks: next, notes }
+    }
+
+    const fixPrompt = [
+      'The document you returned has Mermaid diagram block(s) that failed to parse.',
+      'Return a JSON object: { "message": "fixed", "fixes": [ { "index": <blockIndex>, "code": "<valid mermaid>" } ] }',
+      'Only include diagram fixes. Do not rewrite the whole document.',
+      '',
+      'Failures:',
+      ...failures.map(
+        (f) =>
+          `- index ${f.index}: error=${JSON.stringify(f.error)}\n  code=\n\`\`\`\n${f.code}\n\`\`\``,
+      ),
+    ].join('\n')
+
+    try {
+      const rawFix = await callLlm(
+        [...priorMessages, { role: 'user', content: fixPrompt }],
+        llmConfig,
+        { jsonMode: true },
+      )
+      const fixes = parseDiagramFixes(rawFix)
+      for (const fix of fixes) {
+        const block = next[fix.index]
+        if (!block || typeof block !== 'object') continue
+        const b = { ...(block as Record<string, unknown>) }
+        const props =
+          b.props && typeof b.props === 'object' && !Array.isArray(b.props)
+            ? { ...(b.props as Record<string, unknown>) }
+            : {}
+        props.code = fix.code
+        if (props.source !== 'code-index') props.source = 'llm'
+        b.type = 'diagram'
+        b.props = props
+        next[fix.index] = b
+      }
+      notes.push(`Re-validated Mermaid after fix attempt ${attempt + 1}.`)
+    } catch (err) {
+      notes.push(
+        `Diagram fix attempt failed: ${err instanceof Error ? err.message : String(err)}`,
+      )
+    }
+  }
+
+  return { blocks: next, notes }
+}
+
+function parseDiagramFixes(text: string): { index: number; code: string }[] {
+  let trimmed = text.trim()
+  const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+  if (fence) trimmed = fence[1].trim()
+  try {
+    const parsed = JSON.parse(trimmed)
+    const fixes = parsed?.fixes
+    if (!Array.isArray(fixes)) return []
+    return fixes
+      .map((f: unknown) => {
+        if (!f || typeof f !== 'object') return null
+        const row = f as Record<string, unknown>
+        const index = Number(row.index)
+        const code = typeof row.code === 'string' ? row.code : ''
+        if (!Number.isFinite(index) || !code.trim()) return null
+        return { index: Math.trunc(index), code }
+      })
+      .filter((x): x is { index: number; code: string } => x !== null)
+  } catch {
+    return []
   }
 }

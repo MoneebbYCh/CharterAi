@@ -1,37 +1,30 @@
 import { useViewState } from './hooks/useViewState'
 import { HomePage } from './pages/HomePage'
-import { ProjectCharterPage } from './pages/ProjectCharterPage'
-import { PrdCreationPage } from './pages/PrdCreationPage'
-import { SystemDesignPage } from './pages/SystemDesignPage'
-import { PhasePlaceholderPage } from './pages/PhasePlaceholderPage'
+import { ProfilePage } from './pages/ProfilePage'
+import { PhaseCanvasPage } from './pages/PhaseCanvasPage'
 import { CRTMonitor } from './components/layout/CRTMonitor'
-import { PHASES } from './data/phases'
+import { isCanvasPhaseId } from './data/canvasPhases'
 import { useChat } from './hooks/useChat'
 import { ChatPanel } from './components/chat/ChatPanel'
 import { ChatToggleButton } from './components/chat/ChatToggleButton'
 
 function App() {
   const { view, navigate, goHome } = useViewState()
-  const chat = useChat(view.page)
+  const chatPhase =
+    view.page === 'home' || view.page === 'profile' ? 'project-charter' : view.page
+  const chat = useChat(chatPhase)
 
   const renderPage = () => {
-    switch (view.page) {
-      case 'home':
-        return <HomePage onNavigate={navigate} />
-      case 'project-charter':
-        return <ProjectCharterPage onNavigate={navigate} goHome={goHome} />
-      case 'prd':
-        return <PrdCreationPage onNavigate={navigate} goHome={goHome} />
-      case 'system-design':
-        return <SystemDesignPage onNavigate={navigate} goHome={goHome} />
-      case 'placeholder': {
-        const phase = PHASES.find((p) => p.id === view.phaseId)
-        if (!phase) return <HomePage onNavigate={navigate} />
-        return <PhasePlaceholderPage phase={phase} onNavigate={navigate} />
-      }
-      default:
-        return <HomePage onNavigate={navigate} />
+    if (view.page === 'home') {
+      return <HomePage onNavigate={navigate} />
     }
+    if (view.page === 'profile') {
+      return <ProfilePage onNavigate={navigate} goHome={goHome} />
+    }
+    if (isCanvasPhaseId(view.page)) {
+      return <PhaseCanvasPage phaseId={view.page} onNavigate={navigate} goHome={goHome} />
+    }
+    return <HomePage onNavigate={navigate} />
   }
 
   return (

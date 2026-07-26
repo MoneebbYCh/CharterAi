@@ -81,7 +81,7 @@ export async function callLlm(
     const envName = provider.env || 'DEEPSEEK_API_KEY'
     throw new Error(
       `No API key configured. Set the ${envName} environment variable ` +
-        "or run 'Req-Gath-Sys: Configure API Key' in VS Code.",
+        "or run 'Charter Ai: Configure API Key' in VS Code.",
     )
   }
 

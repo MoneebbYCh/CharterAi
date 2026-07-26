@@ -43,7 +43,7 @@ export const PHASES: Phase[] = [
     subtitle: 'Build & Integrate',
     description: 'Implementation, code review, integration, and internal demo.',
     path: '/dev',
-    active: false,
+    active: true,
   },
   {
     id: 'qa',
@@ -52,7 +52,7 @@ export const PHASES: Phase[] = [
     subtitle: 'Test & Validate',
     description: 'Acceptance criteria verification, model eval, regression, and sign-off.',
     path: '/qa',
-    active: false,
+    active: true,
   },
   {
     id: 'post-dev',
@@ -61,7 +61,7 @@ export const PHASES: Phase[] = [
     subtitle: 'Deploy & Handover',
     description: 'Production deployment, monitoring, documentation, and stakeholder handover.',
     path: '/post-dev',
-    active: false,
+    active: true,
   },
 ]
 
