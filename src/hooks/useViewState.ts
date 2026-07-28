@@ -1,8 +1,9 @@
 import { useState, useCallback, useMemo } from 'react'
-import { PHASES } from '../data/phases'
-import { isCanvasPhaseId, type CanvasPhaseId } from '../data/canvasPhases'
+import { getDocumentType, isDocumentTypeId } from '../data/documentTypes'
 
-export type View = { page: 'home' } | { page: 'profile' } | { page: CanvasPhaseId }
+/** `page` is 'home', 'profile', or any document-type id (built-in or custom). */
+export type ViewPage = 'home' | 'profile' | (string & {})
+export type View = { page: ViewPage }
 
 export function useViewState() {
   const [view, setView] = useState<View>({ page: 'home' })
@@ -13,8 +14,8 @@ export function useViewState() {
 
   const phaseInfo = useMemo(() => {
     if (view.page === 'home' || view.page === 'profile') return null
-    if (!isCanvasPhaseId(view.page)) return null
-    return PHASES.find((p) => p.id === view.page) ?? null
+    if (!isDocumentTypeId(view.page)) return null
+    return getDocumentType(view.page) ?? null
   }, [view])
 
   const goHome = useCallback(() => {

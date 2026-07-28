@@ -1,7 +1,6 @@
 import type { View } from '../../hooks/useViewState'
-import { PHASES } from '../../data/phases'
 import type { GateStatus } from '../../utils/validation'
-import { isCanvasPhaseId } from '../../data/canvasPhases'
+import { listDocumentTypes } from '../../data/documentTypes'
 import { BrandMark } from '../BrandMark'
 
 interface PipelineHeaderProps {
@@ -56,9 +55,9 @@ export function PipelineHeader({
         </div>
       </div>
       <nav className="flex w-full overflow-x-auto">
-        {PHASES.map((phase) => {
+        {listDocumentTypes().map((phase) => {
           const active = phase.id === currentPhaseId
-          const canNavigate = onNavigate && isCanvasPhaseId(phase.id)
+          const canNavigate = Boolean(onNavigate)
           const className = [
             'flex-1 min-w-[140px] px-4 py-2 flex items-center justify-between border-r border-on-background transition-colors text-left',
             active
@@ -84,7 +83,7 @@ export function PipelineHeader({
                 key={phase.id}
                 type="button"
                 className={className}
-                onClick={() => onNavigate({ page: phase.id })}
+                onClick={() => onNavigate?.({ page: phase.id })}
               >
                 {inner}
               </button>

@@ -7,6 +7,8 @@ export interface CharterAnchors {
   businessCaseId?: string
   objectivesId?: string
   shortName?: string
+  /** Which starting template the document was created from ('custom' for a blank start). */
+  templateId?: string
   [key: string]: string | undefined
 }
 
@@ -75,4 +77,24 @@ export function documentHasContent(doc: CanvasDocument): boolean {
     const children = block.children
     return Array.isArray(children) && children.length > 0
   })
+}
+
+function blockPlainText(content: unknown): string {
+  if (typeof content === 'string') return content.trim()
+  if (!Array.isArray(content)) return ''
+  return content
+    .map((c) => {
+      if (typeof c === 'string') return c
+      if (c && typeof c === 'object' && 'text' in c) return String((c as { text: unknown }).text)
+      return ''
+    })
+    .join('')
+    .trim()
+}
+
+/** True when the canvas already has its own title heading — page chrome masthead should hide. */
+export function documentHasOwnHeading(blocks: BlockNoteBlock[]): boolean {
+  return blocks.some(
+    (block) => String(block.type || '') === 'heading' && blockPlainText(block.content).length > 0,
+  )
 }

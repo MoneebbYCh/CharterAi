@@ -8,19 +8,11 @@ import {
   parseMermaid,
 } from './mermaidValidate'
 import {
+  docLabelFor,
   loadConfig,
   loadForm,
   saveForm,
 } from '../formStateManager'
-
-const CANVAS_PHASES = [
-  'project-charter',
-  'prd',
-  'system-design',
-  'dev',
-  'qa',
-  'post-dev',
-] as const
 
 const PHASE_LABELS: Record<string, string> = {
   'project-charter': 'Project Charter',
@@ -31,8 +23,8 @@ const PHASE_LABELS: Record<string, string> = {
   'post-dev': 'Post Dev / handover',
 }
 
-function canvasSystemPrompt(phase: string): string {
-  const label = PHASE_LABELS[phase] ?? phase
+function canvasSystemPrompt(phase: string, label?: string): string {
+  const resolvedLabel = label || PHASE_LABELS[phase] || phase
   const charterExtra =
     phase === 'project-charter'
       ? `
@@ -49,7 +41,7 @@ PHASE RULES:
 - When useful, return "anchors" for stable cross-phase IDs (shortName, requirement ids, etc.).
 `
 
-  return `You are drafting the ${label} as a BlockNote canvas document for Charter Ai.
+  return `You are drafting the ${resolvedLabel} as a BlockNote canvas document for Charter Ai.
 Help the user elicit and write a clear, usable document for this pipeline phase.
 
 HARD CONSTRAINTS:
@@ -69,8 +61,9 @@ If the user only asks a question and no document change is needed, set "document
 Always return valid JSON with "message"; include "document" (and "anchors" when useful) when drafting/updating.`
 }
 
+// Every pipeline document (built-in or custom) is a BlockNote canvas.
 function isCanvasPhase(phase: string): boolean {
-  return (CANVAS_PHASES as readonly string[]).includes(phase)
+  return typeof phase === 'string' && phase.trim().length > 0
 }
 
 function emptyCanvasDoc() {
@@ -106,18 +99,24 @@ function normalizeCanvasDoc(data: unknown): {
   return emptyCanvasDoc()
 }
 
-async function loadPhaseDocument(workspaceRoot: string, phase: string): Promise<unknown | null> {
+async function loadPhaseDocument(
+  workspaceRoot: string,
+  phase: string,
+  version?: string,
+): Promise<unknown | null> {
   if (!isCanvasPhase(phase)) return null
-  return loadForm(workspaceRoot, phase)
+  return loadForm(workspaceRoot, phase, version)
 }
 
 export async function buildMessages(
   text: string,
   phase: string,
   workspaceRoot: string,
+  version?: string,
 ): Promise<ChatMessage[]> {
   const fieldGuide = getFieldGuide(phase)
-  const formData = await loadPhaseDocument(workspaceRoot, phase)
+  const customLabel = await docLabelFor(workspaceRoot, phase)
+  const formData = await loadPhaseDocument(workspaceRoot, phase, version)
   const current = JSON.stringify(normalizeCanvasDoc(formData), null, 2)
   const codeContext = buildCodeContext(workspaceRoot)
 
@@ -132,7 +131,7 @@ export async function buildMessages(
   if (codeContext) parts.push('', codeContext)
 
   return [
-    { role: 'system', content: canvasSystemPrompt(phase) },
+    { role: 'system', content: canvasSystemPrompt(phase, customLabel ?? undefined) },
     { role: 'user', content: parts.join('\n') },
   ]
 }
@@ -240,10 +239,11 @@ export interface ProcessChatArgs {
   apiKey: string
   provider?: string | null
   model?: string | null
+  version?: string
 }
 
 export async function processChat(args: ProcessChatArgs): Promise<ChatResult> {
-  const { text, phase, workspaceRoot, apiKey, provider, model } = args
+  const { text, phase, workspaceRoot, apiKey, provider, model, version } = args
 
   const config = await loadConfig(workspaceRoot)
   const llmSettings = config.llm ?? { provider: 'deepseek', model: null }
@@ -254,7 +254,7 @@ export async function processChat(args: ProcessChatArgs): Promise<ChatResult> {
     apiKey,
   }
 
-  const messages = await buildMessages(text, phase, workspaceRoot)
+  const messages = await buildMessages(text, phase, workspaceRoot, version)
   const raw = await callLlm(messages, llmConfig, { jsonMode: true })
   const { message: replyText, document, anchors } = parseResponse(raw)
 
@@ -267,14 +267,14 @@ export async function processChat(args: ProcessChatArgs): Promise<ChatResult> {
       llmConfig,
       messages,
     )
-    const existing = normalizeCanvasDoc(await loadPhaseDocument(workspaceRoot, phase))
+    const existing = normalizeCanvasDoc(await loadPhaseDocument(workspaceRoot, phase, version))
     const saved = {
       version: 1 as const,
       kind: 'blocknote' as const,
       blocks: validatedBlocks,
       anchors: anchors ?? existing.anchors ?? {},
     }
-    await saveForm(workspaceRoot, phase, saved)
+    await saveForm(workspaceRoot, phase, saved, version)
     reload = { type: 'load_canvas', phase, data: saved }
     formUpdated = true
     if (notes.length) {

@@ -5,8 +5,9 @@ import {
   type CanvasDocument,
   type BlockNoteBlock,
 } from '../types/document'
-import { getCanvasPhase, type CanvasPhaseId } from '../data/canvasPhases'
+import { getDocumentType } from '../data/documentTypes'
 import { getVscodeApi } from '../utils/vscodeApi'
+import { getActiveVersionId, storageKeyFor, DEFAULT_VERSION_ID } from '../utils/versions'
 
 const vscode = getVscodeApi()
 
@@ -22,14 +23,18 @@ function loadFromStorage(storageKey: string, legacyStorageKey?: string): CanvasD
   }
 }
 
-/** Shared load/save hook for every BlockNote canvas phase. */
-export function usePhaseDocument(phaseId: CanvasPhaseId) {
-  const meta = getCanvasPhase(phaseId)
+/** Shared load/save hook for every BlockNote canvas document (built-in or custom). */
+export function usePhaseDocument(phaseId: string) {
+  const meta = getDocumentType(phaseId)
   if (!meta) {
-    throw new Error(`Unknown canvas phase: ${phaseId}`)
+    throw new Error(`Unknown document type: ${phaseId}`)
   }
-  const storageKey = meta.storageKey
-  const legacyStorageKey = meta.legacyStorageKey
+  // Documents are isolated per version; capture the active version at mount.
+  // Switching versions always routes through Home, which remounts this hook.
+  const [versionId] = useState(() => getActiveVersionId())
+  const storageKey = storageKeyFor(meta.storageKey, versionId)
+  const legacyStorageKey =
+    versionId === DEFAULT_VERSION_ID ? meta.legacyStorageKey : undefined
 
   const [doc, setDoc] = useState<CanvasDocument>(() => loadFromStorage(storageKey, legacyStorageKey))
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
@@ -53,17 +58,17 @@ export function usePhaseDocument(phaseId: CanvasPhaseId) {
   const persist = useCallback(
     (next: CanvasDocument) => {
       localStorage.setItem(storageKey, JSON.stringify(next))
-      if (phaseId === 'project-charter') {
+      if (phaseId === 'project-charter' && versionId === DEFAULT_VERSION_ID) {
         localStorage.removeItem('charter-ai-project-charter-v2')
         localStorage.removeItem('ascen-project-charter-v2')
       }
       if (vscode) {
-        vscode.postMessage({ type: 'saveCanvas', phase: phaseId, data: next })
+        vscode.postMessage({ type: 'saveCanvas', phase: phaseId, version: versionId, data: next })
       }
       setLastSaved(new Date())
       setIsDirty(false)
     },
-    [phaseId, storageKey],
+    [phaseId, storageKey, versionId],
   )
 
   useEffect(() => {
@@ -85,16 +90,21 @@ export function usePhaseDocument(phaseId: CanvasPhaseId) {
   }, [])
 
   const applyExternalDocument = useCallback(
-    (next: CanvasDocument) => {
+    (next: CanvasDocument, options?: { persistToDisk?: boolean }) => {
       const normalized = toCanvasDocument(next)
       setDoc(normalized)
       localStorage.setItem(storageKey, JSON.stringify(normalized))
+      // Persist to disk when the change originates in the webview (e.g. applying a template),
+      // so the extension's loadCanvas round-trip doesn't clobber it on the next open.
+      if (options?.persistToDisk && vscode) {
+        vscode.postMessage({ type: 'saveCanvas', phase: phaseId, version: versionId, data: normalized })
+      }
       setExternalBlocks(normalized.blocks)
       setExternalRevision((n) => n + 1)
       setIsDirty(false)
       setLastSaved(new Date())
     },
-    [storageKey],
+    [storageKey, phaseId, versionId],
   )
 
   const saveNow = useCallback(() => {
@@ -113,14 +123,20 @@ export function usePhaseDocument(phaseId: CanvasPhaseId) {
     if (!vscode) return
     const handler = (event: MessageEvent) => {
       const msg = event.data
-      if (msg.type === 'loadCanvas' && msg.phase === phaseId) {
+      // Ignore responses meant for a different version to avoid cross-version races.
+      const msgVersion = typeof msg?.version === 'string' ? msg.version : versionId
+      if (msg.type === 'loadCanvas' && msg.phase === phaseId && msgVersion === versionId) {
         if (msg.data) {
           applyExternalDocument(toCanvasDocument(msg.data))
         }
         setReady(true)
       }
       // Backward-compat: charter used loadCharter before unified canvas messages.
-      if (phaseId === 'project-charter' && msg.type === 'loadCharter') {
+      if (
+        phaseId === 'project-charter' &&
+        versionId === DEFAULT_VERSION_ID &&
+        msg.type === 'loadCharter'
+      ) {
         if (msg.data) {
           applyExternalDocument(toCanvasDocument(msg.data))
         }
@@ -128,13 +144,16 @@ export function usePhaseDocument(phaseId: CanvasPhaseId) {
       }
     }
     window.addEventListener('message', handler)
-    vscode.postMessage({ type: 'loadCanvas', phase: phaseId })
+    // Make sure the extension targets this version for disk + AI chat.
+    vscode.postMessage({ type: 'setActiveVersion', version: versionId })
+    vscode.postMessage({ type: 'loadCanvas', phase: phaseId, version: versionId })
     return () => window.removeEventListener('message', handler)
-  }, [applyExternalDocument, phaseId])
+  }, [applyExternalDocument, phaseId, versionId])
 
   return {
     meta,
     doc,
+    versionId,
     blocks: doc.blocks,
     setBlocks,
     applyExternalDocument,

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import type { BlockNoteBlock } from '../../types/document'
 import {
   CANVAS_INSERT_ITEMS,
@@ -7,6 +7,9 @@ import {
   type CanvasEditor,
 } from './canvasInsert'
 import { buildCanvasOutline, outlineTypeBadge } from './canvasOutline'
+import type { CharterTemplate } from '../../data/docTemplates'
+
+export type ToolsTab = 'insert' | 'outline' | 'template'
 
 interface CanvasToolsSidebarProps {
   editor: CanvasEditor | null
@@ -14,6 +17,22 @@ interface CanvasToolsSidebarProps {
   phaseTitle: string
   collapsed: boolean
   onToggleCollapsed: () => void
+  tab: ToolsTab
+  onTabChange: (tab: ToolsTab) => void
+  /** Whether this document type supports templates. */
+  templatesEnabled?: boolean
+  /** Selectable templates (already includes the blank "Build from scratch"). */
+  templates?: CharterTemplate[]
+  /** The template the document was started from, if any. */
+  currentTemplateId?: string
+  /** Template highlighted for preview in the gallery. */
+  previewTemplateId?: string
+  /** Preview a template in the gallery pane. */
+  onPreviewTemplate?: (id: string) => void
+  /** Save the current document as a reusable template. */
+  onSaveTemplate?: () => void
+  /** Replay the templates tutorial. */
+  onShowTutorial?: () => void
 }
 
 export function CanvasToolsSidebar({
@@ -22,9 +41,16 @@ export function CanvasToolsSidebar({
   phaseTitle,
   collapsed,
   onToggleCollapsed,
+  tab,
+  onTabChange,
+  templatesEnabled = false,
+  templates = [],
+  currentTemplateId,
+  previewTemplateId,
+  onPreviewTemplate,
+  onSaveTemplate,
+  onShowTutorial,
 }: CanvasToolsSidebarProps) {
-  const [tab, setTab] = useState<'insert' | 'outline'>('insert')
-
   // Prefer the live editor document (always has block ids) over persisted JSON.
   const outlineSource = useMemo(() => {
     if (editor?.document?.length) {
@@ -37,6 +63,8 @@ export function CanvasToolsSidebar({
 
   const shapes = CANVAS_INSERT_ITEMS.filter((i) => i.group === 'Shapes')
   const textItems = CANVAS_INSERT_ITEMS.filter((i) => i.group === 'Text')
+
+  const templateOptions = templates
 
   if (collapsed) {
     return (
@@ -71,13 +99,13 @@ export function CanvasToolsSidebar({
         </button>
       </header>
 
-      <div className="canvas-tools-tabs" role="tablist">
+      <div className={`canvas-tools-tabs${templatesEnabled ? ' canvas-tools-tabs--three' : ''}`} role="tablist">
         <button
           type="button"
           role="tab"
           aria-selected={tab === 'insert'}
           className={`canvas-tools-tab${tab === 'insert' ? ' is-active' : ''}`}
-          onClick={() => setTab('insert')}
+          onClick={() => onTabChange('insert')}
         >
           Insert
         </button>
@@ -86,10 +114,21 @@ export function CanvasToolsSidebar({
           role="tab"
           aria-selected={tab === 'outline'}
           className={`canvas-tools-tab${tab === 'outline' ? ' is-active' : ''}`}
-          onClick={() => setTab('outline')}
+          onClick={() => onTabChange('outline')}
         >
           Outline
         </button>
+        {templatesEnabled ? (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'template'}
+            className={`canvas-tools-tab${tab === 'template' ? ' is-active' : ''}`}
+            onClick={() => onTabChange('template')}
+          >
+            Templates
+          </button>
+        ) : null}
       </div>
 
       <div className="canvas-tools-body">
@@ -135,7 +174,7 @@ export function CanvasToolsSidebar({
               </div>
             </section>
           </>
-        ) : (
+        ) : tab === 'outline' ? (
           <section className="canvas-tools-section">
             <h3 className="canvas-tools-section-title">On this page</h3>
             <p className="canvas-tools-section-hint">
@@ -172,6 +211,51 @@ export function CanvasToolsSidebar({
                 ))}
               </ul>
             )}
+          </section>
+        ) : (
+          <section className="canvas-tools-section">
+            <h3 className="canvas-tools-section-title">Templates</h3>
+            <p className="canvas-tools-section-hint">
+              Pick one to preview it on the right, then apply it to this document.{' '}
+              <button type="button" className="canvas-tools-tut-link" onClick={() => onShowTutorial?.()}>
+                How it works
+              </button>
+            </p>
+            {onSaveTemplate ? (
+              <button
+                type="button"
+                className="canvas-tools-save-template"
+                onClick={() => onSaveTemplate()}
+                title="Save the current document as a reusable template"
+              >
+                + Save current as template
+              </button>
+            ) : null}
+            <ul className="canvas-tools-templates" role="listbox" aria-label="Templates">
+              {templateOptions.map((template) => {
+                const isPreview = previewTemplateId === template.id
+                const isCurrent = currentTemplateId === template.id
+                return (
+                  <li key={template.id}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={isPreview}
+                      className={`canvas-tools-template-row${isPreview ? ' is-active' : ''}${
+                        template.custom ? ' is-custom' : ''
+                      }`}
+                      onClick={() => onPreviewTemplate?.(template.id)}
+                    >
+                      <span className="canvas-tools-template-row-badge">{template.category}</span>
+                      <span className="canvas-tools-template-row-name">{template.name}</span>
+                      {isCurrent ? (
+                        <span className="canvas-tools-template-row-current">Applied</span>
+                      ) : null}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
           </section>
         )}
       </div>

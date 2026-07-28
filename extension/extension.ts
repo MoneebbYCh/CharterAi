@@ -5,13 +5,16 @@ import { handlePdfExport, handlePdfExportAs } from './pdfExportHandler'
 import { CodeIndexer } from './codeIndexer'
 import { getApiKey, promptForApiKey } from './apiKeyManager'
 import {
+  deleteVersionDir,
   initWorkspace,
   loadCharter,
   loadCustomOptions,
+  loadDocTypes,
   loadForm,
   loadPrd,
   saveCharter,
   saveCustomOptions,
+  saveDocTypes,
   saveForm,
   savePrd,
 } from './formStateManager'
@@ -22,6 +25,9 @@ import type { WebviewToExtensionMessage, ExtensionToWebviewMessage, CustomOption
 
 export function activate(context: vscode.ExtensionContext) {
   let panel: vscode.WebviewPanel | undefined
+  // The active document "version" (independent doc set in the same workspace).
+  // Disk reads/writes and the AI chat agent all target this.
+  let activeVersion = 'default'
 
   function getHtml(webview: vscode.Webview): string {
     const distPath = path.join(context.extensionPath, 'dist', 'index.html')
@@ -74,21 +80,41 @@ export function activate(context: vscode.ExtensionContext) {
         break
       }
       case 'loadForm': {
-        const data = await loadForm(ws, msg.phase)
+        const data = await loadForm(ws, msg.phase, activeVersion)
         postMessage({ type: 'loadForm', phase: msg.phase, data })
         break
       }
       case 'saveForm': {
-        await saveForm(ws, msg.phase, msg.data)
+        await saveForm(ws, msg.phase, msg.data, activeVersion)
+        break
+      }
+      case 'loadDocTypes': {
+        const data = await loadDocTypes(ws)
+        postMessage({ type: 'loadDocTypes', data })
+        break
+      }
+      case 'saveDocTypes': {
+        await saveDocTypes(ws, msg.data)
+        break
+      }
+      case 'setActiveVersion': {
+        activeVersion = msg.version || 'default'
+        break
+      }
+      case 'deleteVersion': {
+        await deleteVersionDir(ws, msg.version)
         break
       }
       case 'loadCanvas': {
-        const data = await loadForm(ws, msg.phase)
-        postMessage({ type: 'loadCanvas', phase: msg.phase, data })
+        const version = msg.version ?? activeVersion
+        const data = await loadForm(ws, msg.phase, version)
+        postMessage({ type: 'loadCanvas', phase: msg.phase, data, version })
         break
       }
       case 'saveCanvas': {
-        await saveForm(ws, msg.phase, msg.data)
+        const version = msg.version ?? activeVersion
+        if (msg.version) activeVersion = msg.version
+        await saveForm(ws, msg.phase, msg.data, version)
         break
       }
       case 'loadCustomOptions': {
@@ -161,6 +187,7 @@ export function activate(context: vscode.ExtensionContext) {
             phase: msg.phase,
             workspaceRoot: ws,
             apiKey,
+            version: activeVersion,
           })
 
           if (result.reload) {
@@ -321,7 +348,7 @@ export function activate(context: vscode.ExtensionContext) {
           return
         }
 
-        const existing = await loadForm(ws, phase)
+        const existing = await loadForm(ws, phase, activeVersion)
         const blocks =
           existing &&
           typeof existing === 'object' &&
@@ -352,8 +379,8 @@ export function activate(context: vscode.ExtensionContext) {
           blocks,
           anchors,
         }
-        await saveForm(ws, phase, saved)
-        postMessage({ type: 'loadCanvas', phase, data: saved })
+        await saveForm(ws, phase, saved, activeVersion)
+        postMessage({ type: 'loadCanvas', phase, data: saved, version: activeVersion })
 
         const trunc = projected.truncated ? ' (capped/clustered)' : ''
         vscode.window.showInformationMessage(

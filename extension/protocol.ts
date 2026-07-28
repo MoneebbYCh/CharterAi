@@ -26,7 +26,8 @@ export type ExtensionToWebviewMessage =
   | { type: 'loadCharter'; data: unknown }
   | { type: 'loadPrd'; data: unknown; charterData: unknown | null }
   | { type: 'loadForm'; phase: string; data: unknown }
-  | { type: 'loadCanvas'; phase: string; data: unknown }
+  | { type: 'loadCanvas'; phase: string; data: unknown; version?: string }
+  | { type: 'loadDocTypes'; data: unknown }
   | { type: 'loadCustomOptions'; data: CustomOptionsStorage }
   | { type: 'navigateTo'; view: View }
   | { type: 'indexProgress'; phase: string; percent: number }
@@ -39,12 +40,16 @@ export type WebviewToExtensionMessage =
   | { type: 'saveCharter'; data: unknown }
   | { type: 'savePrd'; data: unknown }
   | { type: 'saveForm'; phase: string; data: unknown }
-  | { type: 'saveCanvas'; phase: string; data: unknown }
+  | { type: 'saveCanvas'; phase: string; data: unknown; version?: string }
   | { type: 'saveCustomOptions'; data: CustomOptionsStorage }
+  | { type: 'saveDocTypes'; data: unknown }
+  | { type: 'loadDocTypes' }
+  | { type: 'setActiveVersion'; version: string }
+  | { type: 'deleteVersion'; version: string }
   | { type: 'loadCharter' }
   | { type: 'loadPrd' }
   | { type: 'loadForm'; phase: string }
-  | { type: 'loadCanvas'; phase: string }
+  | { type: 'loadCanvas'; phase: string; version?: string }
   | { type: 'loadCustomOptions' }
   | { type: 'exportPdf'; phase: 'charter' | 'prd'; buffer: ArrayBuffer }
   | { type: 'exportPdfAs'; phase: 'charter' | 'prd'; buffer: ArrayBuffer }
