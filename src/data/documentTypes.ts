@@ -4,6 +4,7 @@ import {
   type CanvasPhaseId,
 } from './canvasPhases'
 import { getVscodeApi } from '../utils/vscodeApi'
+import { workspaceScopedKey } from '../utils/workspaceScope'
 
 /**
  * Unified registry of pipeline document types.
@@ -72,9 +73,13 @@ export const CUSTOM_DOC_ICONS = [
 
 // --- custom-type storage ---------------------------------------------------
 
+function customTypesKey(): string {
+  return workspaceScopedKey(CUSTOM_KEY)
+}
+
 function readCustomTypes(): CustomDocType[] {
   try {
-    const raw = localStorage.getItem(CUSTOM_KEY)
+    const raw = localStorage.getItem(customTypesKey())
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
@@ -99,7 +104,7 @@ function readCustomTypes(): CustomDocType[] {
 function writeCustomTypes(list: CustomDocType[]): void {
   const normalized = list.map((v, i) => ({ ...v, order: i }))
   try {
-    localStorage.setItem(CUSTOM_KEY, JSON.stringify(normalized))
+    localStorage.setItem(customTypesKey(), JSON.stringify(normalized))
   } catch {
     /* ignore storage errors */
   }
@@ -127,7 +132,7 @@ export function hydrateCustomTypesFromDisk(data: unknown): boolean {
     order: i,
   }))
   try {
-    localStorage.setItem(CUSTOM_KEY, JSON.stringify(merged))
+    localStorage.setItem(customTypesKey(), JSON.stringify(merged))
   } catch {
     /* ignore */
   }

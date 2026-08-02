@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChatMessage } from '../../hooks/useChat'
+import { ChatMarkdown } from './ChatMarkdown'
 
 interface ChatPanelProps {
   isOpen: boolean
@@ -8,9 +9,19 @@ interface ChatPanelProps {
   onSend: (text: string) => void
   onClear: () => void
   isTyping: boolean
+  /** Interim status while the assistant works (e.g. updating code index). */
+  statusText?: string | null
 }
 
-export function ChatPanel({ isOpen, onClose, messages, onSend, onClear, isTyping }: ChatPanelProps) {
+export function ChatPanel({
+  isOpen,
+  onClose,
+  messages,
+  onSend,
+  onClear,
+  isTyping,
+  statusText,
+}: ChatPanelProps) {
   const [input, setInput] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -19,7 +30,7 @@ export function ChatPanel({ isOpen, onClose, messages, onSend, onClear, isTyping
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight
     }
-  }, [messages, isTyping])
+  }, [messages, isTyping, statusText])
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -61,17 +72,27 @@ export function ChatPanel({ isOpen, onClose, messages, onSend, onClear, isTyping
             <div className="chat-bubble-label">
               {msg.role === 'user' ? 'You' : 'Assistant'}
             </div>
-            <div className="chat-bubble-text">{msg.text}</div>
+            {msg.role === 'assistant' ? (
+              <div className="chat-bubble-text">
+                <ChatMarkdown text={msg.text} />
+              </div>
+            ) : (
+              <div className="chat-bubble-text chat-bubble-text--plain">{msg.text}</div>
+            )}
           </div>
         ))}
         {isTyping && (
           <div className="chat-bubble chat-bubble--assistant">
             <div className="chat-bubble-label">Assistant</div>
-            <div className="chat-typing-dots">
-              <span className="chat-dot" />
-              <span className="chat-dot" />
-              <span className="chat-dot" />
-            </div>
+            {statusText ? (
+              <div className="chat-bubble-text chat-status-text">{statusText}</div>
+            ) : (
+              <div className="chat-typing-dots">
+                <span className="chat-dot" />
+                <span className="chat-dot" />
+                <span className="chat-dot" />
+              </div>
+            )}
           </div>
         )}
       </div>

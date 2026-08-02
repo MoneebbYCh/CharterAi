@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { View } from '../hooks/useViewState'
 import { BrandMark } from '../components/BrandMark'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -29,6 +29,7 @@ import {
   storageKeyFor,
   type DocVersion,
 } from '../utils/versions'
+import { hasWorkspaceScope } from '../utils/workspaceScope'
 
 interface HomePageProps {
   onNavigate: (view: View) => void
@@ -59,7 +60,9 @@ function clearVersionDocs(versionId: string) {
   listDocumentTypes().forEach((meta) => {
     try {
       localStorage.removeItem(storageKeyFor(meta.storageKey, versionId))
-      if (meta.legacyStorageKey) localStorage.removeItem(meta.legacyStorageKey)
+      if (!hasWorkspaceScope() && meta.legacyStorageKey) {
+        localStorage.removeItem(meta.legacyStorageKey)
+      }
     } catch {
       /* ignore storage errors */
     }
@@ -79,6 +82,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
   const [docTypesRev, setDocTypesRev] = useState(0)
   const [showNewDoc, setShowNewDoc] = useState(false)
   const [pendingDeleteDoc, setPendingDeleteDoc] = useState<DocumentTypeMeta | null>(null)
+  const [workspace, setWorkspace] = useState<{ path: string; name: string } | null>(null)
 
   const docTypes = useMemo(() => listDocumentTypes(), [docTypesRev])
   const activeVersion = versions.find((v) => v.id === activeId) ?? versions[0]
@@ -86,6 +90,23 @@ export function HomePage({ onNavigate }: HomePageProps) {
     () => loadSavedDoc('project-charter', activeId).hasDraft,
     [activeId],
   )
+
+  useEffect(() => {
+    const vscode = getVscodeApi()
+    if (!vscode) return
+    const handler = (event: MessageEvent) => {
+      const msg = event.data
+      if (msg?.type === 'workspaceInfo' && typeof msg.path === 'string') {
+        setWorkspace({
+          path: msg.path,
+          name: typeof msg.name === 'string' && msg.name ? msg.name : msg.path.split(/[/\\]/).pop() || msg.path,
+        })
+      }
+    }
+    window.addEventListener('message', handler)
+    vscode.postMessage({ type: 'loadWorkspaceInfo' })
+    return () => window.removeEventListener('message', handler)
+  }, [])
 
   const openVersion = (id: string) => {
     setActiveVersionId(id)
@@ -147,6 +168,26 @@ export function HomePage({ onNavigate }: HomePageProps) {
             <BrandMark size="sm" />
           </span>
           <div className="mac-striped-header flex-1 min-w-0" aria-hidden />
+        </div>
+
+        <div
+          className="home-workspace-bar"
+          title={workspace?.path ?? 'No workspace folder open'}
+        >
+          <span className="home-workspace-bar-label">Workspace</span>
+          <span className="home-workspace-bar-sep" aria-hidden>
+            ·
+          </span>
+          {workspace ? (
+            <>
+              <span className="home-workspace-bar-name">{workspace.name}</span>
+              <span className="home-workspace-bar-path">{workspace.path}</span>
+            </>
+          ) : (
+            <span className="home-workspace-bar-path">
+              {getVscodeApi() ? 'Detecting folder…' : 'Not running inside VS Code'}
+            </span>
+          )}
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto">

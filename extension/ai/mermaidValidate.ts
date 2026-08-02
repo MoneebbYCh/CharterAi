@@ -115,12 +115,3 @@ export function extractDiagramCodes(blocks: unknown[]): { index: number; code: s
   })
   return out
 }
-
-/** Known-good high-level overview used as last-resort fallback. */
-export const FALLBACK_OVERVIEW_MERMAID = `flowchart TD
-  Users[Customers] --> Portal[Customer Portal]
-  Portal --> IdP[OIDC Identity Provider]
-  Portal --> APIs[Existing Backend APIs]
-  APIs --> ERP[(ERP / CRM)]
-  Portal --> Tickets[Support Ticketing]
-  Portal --> KB[Knowledge Base]`

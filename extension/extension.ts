@@ -8,16 +8,20 @@ import {
   deleteVersionDir,
   initWorkspace,
   loadCharter,
+  loadConfig,
   loadCustomOptions,
   loadDocTypes,
   loadForm,
   loadPrd,
+  resolveEmbeddingSettings,
   saveCharter,
+  saveConfig,
   saveCustomOptions,
   saveDocTypes,
   saveForm,
   savePrd,
 } from './formStateManager'
+import { EMBEDDING_PROVIDERS } from './ai/llmClient'
 import { processChat } from './ai/agent'
 import { diagramBlockFromProjection, projectModuleDependencyMermaid } from './ai/mermaidProject'
 import { parseMermaid } from './ai/mermaidValidate'
@@ -157,6 +161,23 @@ export function activate(context: vscode.ExtensionContext) {
           const index = await indexer.buildIndex((progress) => {
             postMessage({ type: 'indexProgress', phase: progress.phase, percent: progress.percent })
           })
+
+          // Build the semantic embedding index (best-effort; degrade if Ollama is down).
+          try {
+            const embedCfg = resolveEmbeddingSettings(await loadConfig(ws))
+            const stats = await indexer.syncEmbeddings(embedCfg, (p) => {
+              postMessage({ type: 'indexProgress', phase: p.phase, percent: p.percent })
+            })
+            vscode.window.showInformationMessage(
+              `Semantic index ready: ${stats.chunks} code chunks embedded (${embedCfg.provider}/${embedCfg.model}).`,
+            )
+          } catch (embedErr) {
+            const em = embedErr instanceof Error ? embedErr.message : String(embedErr)
+            vscode.window.showWarningMessage(
+              `Semantic embeddings skipped: ${em}. Is Ollama running (ollama pull nomic-embed-text)? The structural index was still saved.`,
+            )
+          }
+
           postMessage({ type: 'loadCodeIndex', data: index })
           vscode.window.showInformationMessage(`Code index rebuilt: ${index.summary.totalFiles} files, ${index.summary.totalTypes} types, ${index.summary.totalComponents} components`)
         } catch (err) {
@@ -176,6 +197,10 @@ export function activate(context: vscode.ExtensionContext) {
         postMessage({ type: 'loadCodeIndex', data: index })
         break
       }
+      case 'loadWorkspaceInfo': {
+        await ensureWorkspaceFolder()
+        break
+      }
       case 'chatMessage': {
         try {
           // Optional: SecretStorage key. If empty, llmClient falls back to the
@@ -188,6 +213,7 @@ export function activate(context: vscode.ExtensionContext) {
             workspaceRoot: ws,
             apiKey,
             version: activeVersion,
+            onStatus: (text) => postMessage({ type: 'chatStatus', text }),
           })
 
           if (result.reload) {
@@ -223,9 +249,11 @@ export function activate(context: vscode.ExtensionContext) {
             }
           }
 
+          postMessage({ type: 'chatStatus', text: null })
           postMessage({ type: 'chatResponse', text: result.message })
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err)
+          postMessage({ type: 'chatStatus', text: null })
           postMessage({ type: 'chatResponse', text: `Error: ${errorMsg}` })
         }
         break
@@ -239,10 +267,25 @@ export function activate(context: vscode.ExtensionContext) {
     return context.extensionPath
   }
 
+  /** Create `.charter-ai/` in the open folder (if needed) and tell the webview the path. */
+  async function ensureWorkspaceFolder(): Promise<void> {
+    const ws = workspaceRoot()
+    try {
+      await initWorkspace(ws)
+    } catch {
+      /* folder may be read-only; indexing/docs will surface errors later */
+    }
+    const folder = vscode.workspace.workspaceFolders?.[0]
+    const fullPath = folder?.uri.fsPath ?? ws
+    const name = folder?.name ?? path.basename(fullPath)
+    postMessage({ type: 'workspaceInfo', path: fullPath, name })
+  }
+
   context.subscriptions.push(
-    vscode.commands.registerCommand('charter-ai.openPipeline', () => {
+    vscode.commands.registerCommand('charter-ai.openPipeline', async () => {
       if (panel) {
         panel.reveal(vscode.ViewColumn.One)
+        await ensureWorkspaceFolder()
         return
       }
 
@@ -264,10 +307,48 @@ export function activate(context: vscode.ExtensionContext) {
       panel.onDidDispose(() => {
         panel = undefined
       })
+
+      await ensureWorkspaceFolder()
+    }),
+
+    vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      activeVersion = 'default'
+      void ensureWorkspaceFolder()
     }),
 
     vscode.commands.registerCommand('charter-ai.configureApiKey', async () => {
       await promptForApiKey(context)
+    }),
+
+    vscode.commands.registerCommand('charter-ai.configureEmbeddings', async () => {
+      const ws = workspaceRoot()
+      if (!ws) { vscode.window.showErrorMessage('Open a workspace first.'); return }
+
+      const config = await loadConfig(ws)
+      const current = resolveEmbeddingSettings(config)
+      const providerPick = await vscode.window.showQuickPick(
+        Object.keys(EMBEDDING_PROVIDERS).map((id) => ({
+          label: id,
+          description: id === current.provider ? 'current' : '',
+        })),
+        { placeHolder: 'Select the embeddings provider for code search' },
+      )
+      if (!providerPick) return
+
+      const defaultModel = EMBEDDING_PROVIDERS[providerPick.label]?.defaultModel ?? current.model
+      const model = await vscode.window.showInputBox({
+        title: 'Charter Ai: Embedding Model',
+        prompt: `Embedding model for "${providerPick.label}"`,
+        value: providerPick.label === current.provider ? current.model : defaultModel,
+        ignoreFocusOut: true,
+      })
+      if (model === undefined) return
+
+      config.embeddings = { provider: providerPick.label, model: model.trim() || defaultModel }
+      await saveConfig(ws, config)
+      vscode.window.showInformationMessage(
+        `Embeddings set to ${config.embeddings.provider}/${config.embeddings.model}. Re-index the codebase to apply.`,
+      )
     }),
 
     vscode.commands.registerCommand('charter-ai.indexCodebase', async () => {

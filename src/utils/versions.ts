@@ -1,12 +1,13 @@
 import { CANVAS_PHASES } from '../data/canvasPhases'
 import { listDocumentTypes } from '../data/documentTypes'
 import { getVscodeApi } from './vscodeApi'
+import { hasWorkspaceScope, workspaceScopedKey } from './workspaceScope'
 
 /**
  * A "Version" is an independent set of pipeline documents living inside the
- * same workspace/codebase. Everything content-related (phase docs, template
- * choice, tutorial state) is isolated per version; the code index and the
- * API key / LLM settings stay shared across all versions.
+ * same workspace/codebase. Content is isolated per version *and* per folder
+ * (via workspaceScopedKey). Disk + RAG live under that folder's `.charter-ai/`.
+ * Only the API key stays global (VS Code SecretStorage).
  */
 export interface DocVersion {
   id: string
@@ -26,7 +27,7 @@ export const TEMPLATE_TUTORIAL_BASE_KEY = 'charter-ai-template-tutorial-seen-v1'
 
 function readRegistry(): DocVersion[] {
   try {
-    const raw = localStorage.getItem(REGISTRY_KEY)
+    const raw = localStorage.getItem(workspaceScopedKey(REGISTRY_KEY))
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
@@ -41,7 +42,7 @@ function readRegistry(): DocVersion[] {
 
 function writeRegistry(versions: DocVersion[]): void {
   try {
-    localStorage.setItem(REGISTRY_KEY, JSON.stringify(versions))
+    localStorage.setItem(workspaceScopedKey(REGISTRY_KEY), JSON.stringify(versions))
   } catch {
     /* ignore storage errors */
   }
@@ -66,7 +67,7 @@ export function getActiveVersionId(): string {
   const versions = ensureRegistry()
   let active: string | null = null
   try {
-    active = localStorage.getItem(ACTIVE_KEY)
+    active = localStorage.getItem(workspaceScopedKey(ACTIVE_KEY))
   } catch {
     active = null
   }
@@ -78,7 +79,7 @@ export function getActiveVersionId(): string {
 
 function writeActive(id: string): void {
   try {
-    localStorage.setItem(ACTIVE_KEY, id)
+    localStorage.setItem(workspaceScopedKey(ACTIVE_KEY), id)
   } catch {
     /* ignore */
   }
@@ -144,9 +145,13 @@ export function deleteVersion(id: string): DocVersion[] {
   return next
 }
 
-/** Namespaced localStorage key for a given version (default uses the bare key). */
+/**
+ * localStorage key for a doc/tutorial: workspace-scoped, then version-scoped.
+ * Default version omits the version suffix for readability within a workspace.
+ */
 export function storageKeyFor(baseKey: string, versionId: string): string {
-  return versionId === DEFAULT_VERSION_ID ? baseKey : `${baseKey}::${versionId}`
+  const withVersion = versionId === DEFAULT_VERSION_ID ? baseKey : `${baseKey}::${versionId}`
+  return workspaceScopedKey(withVersion)
 }
 
 function docBaseKeys(): string[] {
@@ -164,7 +169,9 @@ export function clearVersionStorage(versionId: string): void {
       /* ignore */
     }
   }
-  if (versionId === DEFAULT_VERSION_ID) {
+  // Only touch unscoped legacy keys when we're not in a workspace folder —
+  // otherwise we'd risk wiping another project's old cache.
+  if (versionId === DEFAULT_VERSION_ID && !hasWorkspaceScope()) {
     for (const meta of Object.values(CANVAS_PHASES)) {
       try {
         if (meta.legacyStorageKey) localStorage.removeItem(meta.legacyStorageKey)

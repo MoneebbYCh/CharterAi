@@ -22,12 +22,13 @@ export const CANVAS_BLOCK_CATALOG = `CUSTOM BLOCKS:
 5) riskList — high-level risks only (not a full register)
    { "type": "riskList", "props": { "rows": [ { "risk": "…", "likelihood": "M", "impact": "H", "mitigation": "…" } ] } }
 
-6) diagram — Mermaid diagram (flowchart / architecture). Content is props.code (Mermaid source string).
+6) diagram — Mermaid diagram (flowchart / architecture / sequence). Content is props.code (Mermaid source string).
    { "type": "diagram", "props": { "code": "flowchart TD\\n  A[Users] --> B[Portal]\\n  B --> C[APIs]", "title": "…", "source": "llm" } }
-   Prefer small diagrams (≤ ~15–20 nodes). Use flowchart/graph with simple node ids (letters/words, no spaces in ids).
+   YOU author the Mermaid after reasoning — from codebase tools when a workspace exists, or from chat/requirements when it does not.
+   Prefer small diagrams (≤ ~15–20 nodes). Use flowchart/graph/sequenceDiagram with simple node ids (no spaces in ids).
    Put labels in [brackets]. Avoid HTML, classDef, click, and style directives unless essential.
-   For codebase structure diagrams, prefer asking the user to run "Charter Ai: Insert Module Dependency Diagram"
-   (deterministic from the code index) rather than inventing a large dependency graph.
+   Before finishing a document that includes a diagram, call the validate_mermaid tool and use the returned block.
+   Do not use fixed templates or invent a portal/ERP overview unless that is actually what the user described.
 
 Also: heading, paragraph, bulletListItem, numberedListItem, checkListItem.
 Do not invent other custom types.`

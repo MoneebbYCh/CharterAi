@@ -33,6 +33,9 @@ export type ExtensionToWebviewMessage =
   | { type: 'indexProgress'; phase: string; percent: number }
   | { type: 'loadCodeIndex'; data: CodeIndex | null }
   | { type: 'chatResponse'; text: string }
+  /** Interim status while chat is working (e.g. lazy embedding sync). Null clears it. */
+  | { type: 'chatStatus'; text: string | null }
+  | { type: 'workspaceInfo'; path: string; name: string }
   | { type: 'validation'; phase: string; result: unknown }
   | { type: 'phaseUnlocked'; phase: string; unlocked: boolean }
 
@@ -58,6 +61,7 @@ export type WebviewToExtensionMessage =
   | { type: 'ready' }
   | { type: 'indexCodebase' }
   | { type: 'loadCodeIndex' }
+  | { type: 'loadWorkspaceInfo' }
   | { type: 'chatMessage'; text: string; phase: string }
   | { type: 'validateForm'; phase: string; data?: unknown }
   | { type: 'phaseUnlocked'; phase: string }
