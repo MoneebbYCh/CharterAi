@@ -3,7 +3,7 @@ import * as path from 'path'
 import { LEGACY_STATE_DIR, STATE_DIR } from '../brand'
 import { retrieve } from './retrieval'
 import type { EmbeddingConfig } from './embeddings'
-import { parseMermaid } from './mermaidValidate'
+import { normalizeMermaidSource, parseMermaid } from './mermaidValidate'
 
 export interface ToolContext {
   workspaceRoot: string
@@ -180,7 +180,8 @@ function listDirTool(ctx: ToolContext, args: Record<string, unknown>): string {
  * The model must reason from codebase tools / chat, then call this before finishing.
  */
 async function validateMermaidTool(args: Record<string, unknown>): Promise<string> {
-  const code = String(args.code ?? '').trim()
+  const raw = String(args.code ?? '')
+  const code = normalizeMermaidSource(raw)
   if (!code) return 'error: "code" is required (Mermaid source string)'
   if (code.length > MAX_MERMAID_CHARS) {
     return `error: Mermaid source too long (${code.length} chars; max ${MAX_MERMAID_CHARS}). Simplify to ≤ ~15–20 nodes.`
@@ -193,13 +194,13 @@ async function validateMermaidTool(args: Record<string, unknown>): Promise<strin
     return [
       'INVALID Mermaid — fix the syntax and call validate_mermaid again.',
       `error: ${result.error}`,
-      'Tips: start with flowchart TD / graph TD / sequenceDiagram; simple ids (no spaces); labels in [brackets]; escape quotes in JSON.',
+      'Tips: start with flowchart TD / graph TD / sequenceDiagram; simple ids (no spaces); labels in [brackets]; use real newlines in the code string.',
     ].join('\n')
   }
 
   const block = {
     type: 'diagram',
-    props: { code, title, source: 'llm' },
+    props: { code: result.code, title, source: 'llm' },
   }
   return [
     'VALID Mermaid. Include this exact block (or equivalent props) in your final document array:',

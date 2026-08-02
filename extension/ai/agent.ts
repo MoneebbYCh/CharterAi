@@ -4,7 +4,11 @@ import { CANVAS_BLOCK_CATALOG } from './blockCatalog'
 import { callLlm, type ChatMessage, type LlmConfig } from './llmClient'
 import { runAgentLoop } from './agentLoop'
 import type { EmbeddingConfig } from './embeddings'
-import { extractDiagramCodes, parseMermaid } from './mermaidValidate'
+import {
+  extractDiagramCodes,
+  normalizeMermaidSource,
+  parseMermaid,
+} from './mermaidValidate'
 import {
   docLabelFor,
   loadConfig,
@@ -382,7 +386,22 @@ async function validateAndFixDiagrams(
 
     for (const d of diagrams) {
       const result = await parseMermaid(d.code)
-      if (!result.ok) failures.push({ ...d, error: result.error })
+      if (!result.ok) {
+        failures.push({ ...d, error: result.error })
+        continue
+      }
+      // Persist normalized source (unescaped \\n, stripped fences).
+      const block = next[d.index]
+      if (block && typeof block === 'object') {
+        const b = { ...(block as Record<string, unknown>) }
+        const props =
+          b.props && typeof b.props === 'object' && !Array.isArray(b.props)
+            ? { ...(b.props as Record<string, unknown>) }
+            : {}
+        props.code = result.code
+        b.props = props
+        next[d.index] = b
+      }
     }
 
     if (failures.length === 0) return { blocks: next, notes }
@@ -445,7 +464,7 @@ async function validateAndFixDiagrams(
           b.props && typeof b.props === 'object' && !Array.isArray(b.props)
             ? { ...(b.props as Record<string, unknown>) }
             : {}
-        props.code = fix.code
+        props.code = normalizeMermaidSource(fix.code) || fix.code
         if (props.source !== 'code-index') props.source = 'llm'
         b.type = 'diagram'
         b.props = props
