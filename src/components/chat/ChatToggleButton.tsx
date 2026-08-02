@@ -4,13 +4,15 @@ interface ChatToggleButtonProps {
 }
 
 export function ChatToggleButton({ isOpen, onClick }: ChatToggleButtonProps) {
+  if (isOpen) return null
+
   return (
     <button
       type="button"
-      className={`chat-toggle ${isOpen ? 'chat-toggle--active' : ''}`}
+      className="chat-toggle"
       onClick={onClick}
-      aria-label={isOpen ? 'Close chat' : 'Open chat'}
-      title="Toggle Chat"
+      aria-label="Open chat"
+      title="Open chat"
     >
       <svg
         width="22"
