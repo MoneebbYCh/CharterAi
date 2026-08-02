@@ -39,12 +39,35 @@ export interface LlmSettings {
   model: string | null
 }
 
+export interface EmbeddingSettings {
+  provider: string
+  model: string
+}
+
 export interface WorkspaceConfig {
   llm: LlmSettings
+  embeddings?: EmbeddingSettings
+}
+
+export const DEFAULT_EMBEDDING_SETTINGS: EmbeddingSettings = {
+  provider: 'ollama',
+  model: 'nomic-embed-text',
 }
 
 function defaultConfig(): WorkspaceConfig {
-  return { llm: { provider: 'deepseek', model: null } }
+  return {
+    llm: { provider: 'deepseek', model: null },
+    embeddings: { ...DEFAULT_EMBEDDING_SETTINGS },
+  }
+}
+
+/** Embedding settings from config with defaults applied. */
+export function resolveEmbeddingSettings(config: WorkspaceConfig): EmbeddingSettings {
+  const e = config.embeddings
+  return {
+    provider: e?.provider || DEFAULT_EMBEDDING_SETTINGS.provider,
+    model: e?.model || DEFAULT_EMBEDDING_SETTINGS.model,
+  }
 }
 
 function primaryStateDir(workspaceRoot: string): string {
@@ -140,6 +163,10 @@ export async function loadConfig(workspaceRoot: string): Promise<WorkspaceConfig
   const data = await readStateJson<WorkspaceConfig>(workspaceRoot, CONFIG_FILE)
   if (data && typeof data === 'object') return data
   return defaultConfig()
+}
+
+export async function saveConfig(workspaceRoot: string, config: WorkspaceConfig): Promise<void> {
+  await writeJson(path.join(primaryStateDir(workspaceRoot), CONFIG_FILE), config)
 }
 
 export async function loadCharter(workspaceRoot: string): Promise<unknown | null> {

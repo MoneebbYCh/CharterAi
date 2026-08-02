@@ -33,6 +33,10 @@
         "title": "Charter Ai: Configure API Key"
       },
       {
+        "command": "charter-ai.configureEmbeddings",
+        "title": "Charter Ai: Configure Embeddings"
+      },
+      {
         "command": "charter-ai.insertDependencyDiagram",
         "title": "Charter Ai: Insert Module Dependency Diagram"
       }
@@ -50,6 +54,9 @@
         },
         {
           "command": "charter-ai.configureApiKey"
+        },
+        {
+          "command": "charter-ai.configureEmbeddings"
         },
         {
           "command": "charter-ai.insertDependencyDiagram"

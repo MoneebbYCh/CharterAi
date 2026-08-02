@@ -1,6 +1,8 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { LEGACY_STATE_DIR, STATE_DIR } from '../brand'
+import { retrieve, formatChunksForPrompt } from './retrieval'
+import type { EmbeddingConfig } from './embeddings'
 
 const CODE_INDEX_FILE = 'code-index.json'
 
@@ -86,4 +88,47 @@ export function buildCodeContext(workspaceRoot: string): string {
   if (lines.length === 1) return ''
 
   return lines.join('\n')
+}
+
+/** Compact totals-only header (paired with retrieved code chunks). */
+function buildIndexSummary(workspaceRoot: string): string {
+  const index = readIndex(workspaceRoot)
+  if (!index) return ''
+  const lines: string[] = ['INDEXED CODEBASE CONTEXT:']
+  const s = index.summary
+  if (s && typeof s === 'object') {
+    lines.push(
+      `- Totals: ${s.totalFiles ?? 0} files, ${s.totalTypes ?? 0} types, ` +
+        `${s.totalComponents ?? 0} components, ${s.totalHooks ?? 0} hooks`,
+    )
+  }
+  const g = index.graph
+  if (g && typeof g === 'object') {
+    lines.push(`- Knowledge graph: ${g.nodes ?? 0} nodes, ${g.edges ?? 0} edges`)
+  }
+  return lines.length > 1 ? lines.join('\n') : ''
+}
+
+/**
+ * Retrieval-backed context: a small summary header plus the top-k code chunks
+ * most relevant to `query`. Falls back to the structural name list when the
+ * embedding index is missing or embeddings are unavailable.
+ */
+export async function buildGroundedContext(
+  workspaceRoot: string,
+  query: string,
+  cfg: EmbeddingConfig,
+  k = 8,
+): Promise<string> {
+  try {
+    const chunks = await retrieve(workspaceRoot, query, k, cfg)
+    if (chunks.length > 0) {
+      const summary = buildIndexSummary(workspaceRoot)
+      const body = formatChunksForPrompt(chunks)
+      return summary ? `${summary}\n\n${body}` : body
+    }
+  } catch {
+    /* embeddings unavailable — fall back to the structural summary */
+  }
+  return buildCodeContext(workspaceRoot)
 }

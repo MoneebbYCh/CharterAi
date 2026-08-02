@@ -4,13 +4,13 @@ import {
   CUSTOM_CHARTER_TEMPLATE,
   type CharterTemplate,
 } from './charterTemplates'
+import { workspaceScopedKey } from '../utils/workspaceScope'
 
 /**
  * Template registry keyed by document type. Built-in curated templates exist
  * only for the project charter today; every other type (built-in or custom)
  * starts from the blank option plus any templates the user saves. User
- * templates are stored per type and shared across versions — like reusable
- * assets rather than per-project content.
+ * templates are stored per type and per workspace folder.
  */
 
 export { CUSTOM_CHARTER_TEMPLATE }
@@ -25,7 +25,7 @@ interface StoredUserTemplate {
 }
 
 function userKey(typeId: string): string {
-  return `charter-ai-user-templates-${typeId}-v1`
+  return workspaceScopedKey(`charter-ai-user-templates-${typeId}-v1`)
 }
 
 function curatedFor(typeId: string): CharterTemplate[] {

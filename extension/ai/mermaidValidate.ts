@@ -3,9 +3,11 @@
  *
  * Mermaid 11's `parse()` needs DOMPurify / DOM APIs that are incomplete in
  * Node/VS Code host. Labeled nodes (`A[Label]`) often throw
- * `DOMPurify.addHook is not a function` even for valid diagrams. We treat those
- * environment errors as inconclusive and fall back to detectType + a light
- * structural check so we do not strip good diagrams.
+ * `DOMPurify.addHook is not a function` or return false even for valid diagrams.
+ *
+ * Strategy: normalize + structural checks are authoritative in the host.
+ * Full `mermaid.parse` is best-effort only — never reject a structurally-valid
+ * diagram because of environment/API failures.
  */
 import mermaid from 'mermaid'
 
@@ -14,16 +16,50 @@ let initialized = false
 const DIAGRAM_HEADERS =
   /^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|mindmap|timeline|quadrantChart|requirementDiagram|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment|gitGraph|sankey-beta|xychart-beta|block-beta|architecture-beta)\b/i
 
-function ensureInit() {
-  if (initialized) return
-  mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' })
-  initialized = true
+type MermaidApi = {
+  initialize: (config: Record<string, unknown>) => void
+  detectType?: (text: string) => string
+  parse: (
+    text: string,
+    opts?: { suppressErrors?: boolean },
+  ) => Promise<false | { diagramType: string }>
 }
 
-function isDomEnvironmentError(message: string): boolean {
-  return /DOMPurify|addHook is not a function|document is not defined|window is not defined|HTMLElement|JSDOM/i.test(
-    message,
-  )
+function getMermaidApi(): MermaidApi | null {
+  const mod = mermaid as unknown as MermaidApi & { default?: MermaidApi }
+  if (mod && typeof mod.parse === 'function') return mod
+  if (mod?.default && typeof mod.default.parse === 'function') return mod.default
+  return null
+}
+
+function ensureInit(): MermaidApi | null {
+  const api = getMermaidApi()
+  if (!api) return null
+  if (!initialized) {
+    try {
+      api.initialize({ startOnLoad: false, securityLevel: 'strict' })
+    } catch {
+      // Extension host may lack DOM — continue with structural validation.
+    }
+    initialized = true
+  }
+  return api
+}
+
+/** Strip fences / literal \\n so tool + LLM payloads become real Mermaid source. */
+export function normalizeMermaidSource(code: string): string {
+  let s = (code || '').trim()
+  if (!s) return ''
+
+  const fence = s.match(/^```(?:mermaid)?\s*([\s\S]*?)\s*```$/i)
+  if (fence) s = fence[1].trim()
+
+  // Common when args were double-encoded: real newlines missing, "\\n" present.
+  if (!s.includes('\n') && /\\n/.test(s)) {
+    s = s.replace(/\\n/g, '\n').replace(/\\t/g, '\t')
+  }
+
+  return s.trim()
 }
 
 /** Strip %% comments and blank lines to find the diagram header. */
@@ -37,11 +73,11 @@ function firstDiagramLine(source: string): string {
 }
 
 /**
- * Light structural check used when full parse is unavailable in Node.
+ * Light structural check used when full parse is unavailable/unreliable in Node.
  * Rejects empty / unknown headers / wildly unbalanced brackets.
  */
 export function looksLikeValidMermaid(code: string): boolean {
-  const source = (code || '').trim()
+  const source = normalizeMermaidSource(code)
   if (!source) return false
   const header = firstDiagramLine(source)
   if (!DIAGRAM_HEADERS.test(header)) return false
@@ -52,50 +88,66 @@ export function looksLikeValidMermaid(code: string): boolean {
   const closePar = (source.match(/\)/g) || []).length
   const openCurly = (source.match(/\{/g) || []).length
   const closeCurly = (source.match(/\}/g) || []).length
-  if (Math.abs(openSq - closeSq) > 2) return false
-  if (Math.abs(openPar - closePar) > 2) return false
-  if (Math.abs(openCurly - closeCurly) > 2) return false
 
-  // Flow/graph: expect at least one edge-ish token or a second content line
+  // Square brackets should mostly balance (node labels).
+  if (Math.abs(openSq - closeSq) > 2) return false
+  // Labels often contain many (), so only reject extreme imbalance.
+  if (Math.abs(openPar - closePar) > 8) return false
+  if (Math.abs(openCurly - closeCurly) > 4) return false
+
   const bodyLines = source
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => l && !l.startsWith('%%'))
-  if (bodyLines.length < 2 && !/-->|---|==>|-.->/.test(source)) return false
+  if (bodyLines.length < 2 && !/-->|---|==>|-.->|->>|-->>/.test(source)) return false
 
   return true
 }
 
 export async function parseMermaid(
   code: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const source = (code || '').trim()
+): Promise<{ ok: true; code: string } | { ok: false; error: string }> {
+  const source = normalizeMermaidSource(code)
   if (!source) return { ok: false, error: 'Empty Mermaid source' }
 
+  const structuralOk = looksLikeValidMermaid(source)
+
   try {
-    ensureInit()
+    const api = ensureInit()
+    if (!api) {
+      // No Mermaid API in host — structural is the gate.
+      return structuralOk
+        ? { ok: true, code: source }
+        : {
+            ok: false,
+            error:
+              'Mermaid API unavailable in extension host and source failed structural checks (need a diagram header like flowchart TD and at least one edge).',
+          }
+    }
+
     try {
-      mermaid.detectType(source)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      if (looksLikeValidMermaid(source)) return { ok: true }
-      return { ok: false, error: msg }
+      api.detectType?.(source)
+    } catch {
+      // detectType can throw on unknown types; structural still decides.
     }
 
-    const parsed = await mermaid.parse(source, { suppressErrors: true })
-    if (parsed !== false) return { ok: true }
+    try {
+      const parsed = await api.parse(source, { suppressErrors: true })
+      if (parsed !== false) return { ok: true, code: source }
+    } catch {
+      // DOMPurify / missing document — ignore; structural decides.
+    }
 
-    // suppressErrors → false can mean real syntax error OR Node DOMPurify gap.
-    if (looksLikeValidMermaid(source)) return { ok: true }
-    return { ok: false, error: 'Mermaid parse failed' }
+    if (structuralOk) return { ok: true, code: source }
+    return {
+      ok: false,
+      error:
+        'Mermaid failed structural checks. Use a known header (flowchart TD / sequenceDiagram / …), balance [], and include at least one edge or a second content line.',
+    }
   } catch (err) {
+    // Any unexpected host error: still accept structurally valid diagrams.
+    if (structuralOk) return { ok: true, code: source }
     const msg = err instanceof Error ? err.message : String(err)
-    if (isDomEnvironmentError(msg) && looksLikeValidMermaid(source)) {
-      return { ok: true }
-    }
-    if (looksLikeValidMermaid(source) && /DOMPurify/i.test(msg)) {
-      return { ok: true }
-    }
     return { ok: false, error: msg }
   }
 }
@@ -115,12 +167,3 @@ export function extractDiagramCodes(blocks: unknown[]): { index: number; code: s
   })
   return out
 }
-
-/** Known-good high-level overview used as last-resort fallback. */
-export const FALLBACK_OVERVIEW_MERMAID = `flowchart TD
-  Users[Customers] --> Portal[Customer Portal]
-  Portal --> IdP[OIDC Identity Provider]
-  Portal --> APIs[Existing Backend APIs]
-  APIs --> ERP[(ERP / CRM)]
-  Portal --> Tickets[Support Ticketing]
-  Portal --> KB[Knowledge Base]`

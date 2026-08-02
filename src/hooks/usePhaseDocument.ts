@@ -8,6 +8,7 @@ import {
 import { getDocumentType } from '../data/documentTypes'
 import { getVscodeApi } from '../utils/vscodeApi'
 import { getActiveVersionId, storageKeyFor, DEFAULT_VERSION_ID } from '../utils/versions'
+import { hasWorkspaceScope } from '../utils/workspaceScope'
 
 const vscode = getVscodeApi()
 
@@ -33,8 +34,12 @@ export function usePhaseDocument(phaseId: string) {
   // Switching versions always routes through Home, which remounts this hook.
   const [versionId] = useState(() => getActiveVersionId())
   const storageKey = storageKeyFor(meta.storageKey, versionId)
+  // Never fall back to unscoped legacy keys once a workspace folder is active —
+  // that was the cross-project leak.
   const legacyStorageKey =
-    versionId === DEFAULT_VERSION_ID ? meta.legacyStorageKey : undefined
+    !hasWorkspaceScope() && versionId === DEFAULT_VERSION_ID
+      ? meta.legacyStorageKey
+      : undefined
 
   const [doc, setDoc] = useState<CanvasDocument>(() => loadFromStorage(storageKey, legacyStorageKey))
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
@@ -126,8 +131,12 @@ export function usePhaseDocument(phaseId: string) {
       // Ignore responses meant for a different version to avoid cross-version races.
       const msgVersion = typeof msg?.version === 'string' ? msg.version : versionId
       if (msg.type === 'loadCanvas' && msg.phase === phaseId && msgVersion === versionId) {
+        // null/empty from disk must clear the workspace-scoped cache — never keep
+        // another folder's draft that happened to share a bare localStorage key.
         if (msg.data) {
           applyExternalDocument(toCanvasDocument(msg.data))
+        } else {
+          applyExternalDocument(emptyCanvasDocument())
         }
         setReady(true)
       }
@@ -135,10 +144,13 @@ export function usePhaseDocument(phaseId: string) {
       if (
         phaseId === 'project-charter' &&
         versionId === DEFAULT_VERSION_ID &&
+        !hasWorkspaceScope() &&
         msg.type === 'loadCharter'
       ) {
         if (msg.data) {
           applyExternalDocument(toCanvasDocument(msg.data))
+        } else {
+          applyExternalDocument(emptyCanvasDocument())
         }
         setReady(true)
       }

@@ -1,18 +1,22 @@
-import { buildCodeContext } from './codeContext'
+import { buildGroundedContext } from './codeContext'
 import { getFieldGuide } from './fieldGuides'
 import { CANVAS_BLOCK_CATALOG } from './blockCatalog'
 import { callLlm, type ChatMessage, type LlmConfig } from './llmClient'
+import { runAgentLoop } from './agentLoop'
+import type { EmbeddingConfig } from './embeddings'
 import {
   extractDiagramCodes,
-  FALLBACK_OVERVIEW_MERMAID,
+  normalizeMermaidSource,
   parseMermaid,
 } from './mermaidValidate'
 import {
   docLabelFor,
   loadConfig,
   loadForm,
+  resolveEmbeddingSettings,
   saveForm,
 } from '../formStateManager'
+import { CodeIndexer } from '../codeIndexer'
 
 const PHASE_LABELS: Record<string, string> = {
   'project-charter': 'Project Charter',
@@ -112,13 +116,14 @@ export async function buildMessages(
   text: string,
   phase: string,
   workspaceRoot: string,
+  embedCfg: EmbeddingConfig,
   version?: string,
 ): Promise<ChatMessage[]> {
   const fieldGuide = getFieldGuide(phase)
   const customLabel = await docLabelFor(workspaceRoot, phase)
   const formData = await loadPhaseDocument(workspaceRoot, phase, version)
   const current = JSON.stringify(normalizeCanvasDoc(formData), null, 2)
-  const codeContext = buildCodeContext(workspaceRoot)
+  const codeContext = await buildGroundedContext(workspaceRoot, text, embedCfg)
 
   const parts = [`USER: ${text}`, '']
 
@@ -240,10 +245,44 @@ export interface ProcessChatArgs {
   provider?: string | null
   model?: string | null
   version?: string
+  /** Interim UX status (e.g. "Updating code index…"). Pass null to clear. */
+  onStatus?: (text: string | null) => void
+}
+
+/**
+ * Lazy incremental embedding sync before chat.
+ * Re-embeds only changed files (or builds the index on first use).
+ * Returns false if Ollama / embeddings are unavailable (grep/read_file still work).
+ */
+async function ensureFreshEmbeddings(
+  workspaceRoot: string,
+  embedCfg: EmbeddingConfig,
+  onStatus?: (text: string | null) => void,
+): Promise<boolean> {
+  try {
+    onStatus?.('Checking for code changes…')
+    const indexer = new CodeIndexer(workspaceRoot)
+    const stats = await indexer.syncEmbeddings(embedCfg, (p) => {
+      if (p.phase === 'embedding') {
+        onStatus?.(`Updating code index… ${p.percent}%`)
+      } else if (p.phase === 'embedding-scan') {
+        onStatus?.('Checking for code changes…')
+      }
+    })
+    if (stats.changed > 0) {
+      onStatus?.(
+        `Indexed ${stats.changed} changed file${stats.changed === 1 ? '' : 's'}`,
+      )
+    }
+    return true
+  } catch {
+    onStatus?.('Semantic index unavailable — using file search tools…')
+    return false
+  }
 }
 
 export async function processChat(args: ProcessChatArgs): Promise<ChatResult> {
-  const { text, phase, workspaceRoot, apiKey, provider, model, version } = args
+  const { text, phase, workspaceRoot, apiKey, provider, model, version, onStatus } = args
 
   const config = await loadConfig(workspaceRoot)
   const llmSettings = config.llm ?? { provider: 'deepseek', model: null }
@@ -254,9 +293,41 @@ export async function processChat(args: ProcessChatArgs): Promise<ChatResult> {
     apiKey,
   }
 
-  const messages = await buildMessages(text, phase, workspaceRoot, version)
-  const raw = await callLlm(messages, llmConfig, { jsonMode: true })
-  const { message: replyText, document, anchors } = parseResponse(raw)
+  const embedCfg: EmbeddingConfig = resolveEmbeddingSettings(config)
+
+  // Option B: keep the semantic index fresh when possible (Ollama).
+  // Tools (grep/read_file/list_dir) always work even if embeddings fail.
+  await ensureFreshEmbeddings(workspaceRoot, embedCfg, onStatus)
+  onStatus?.('Thinking…')
+
+  let replyText: string
+  let document: unknown[] | null
+  let anchors: Record<string, string> | null
+  // Message transcript used as context for diagram-fix retries.
+  let fixMessages: ChatMessage[]
+
+  // Always use the agentic tool loop so the model can actually read the open workspace.
+  const fieldGuide = getFieldGuide(phase)
+  const customLabel = await docLabelFor(workspaceRoot, phase)
+  const currentDocJson = JSON.stringify(
+    normalizeCanvasDoc(await loadPhaseDocument(workspaceRoot, phase, version)),
+    null,
+    2,
+  )
+  const result = await runAgentLoop({
+    text,
+    phase,
+    label: customLabel ?? undefined,
+    fieldGuide,
+    workspaceRoot,
+    llmConfig,
+    embedCfg,
+    currentDocJson,
+  })
+  replyText = result.message
+  document = result.document
+  anchors = result.anchors
+  fixMessages = result.messages
 
   let formUpdated = false
   let reload: ChatReload | null = null
@@ -265,7 +336,7 @@ export async function processChat(args: ProcessChatArgs): Promise<ChatResult> {
     const { blocks: validatedBlocks, notes } = await validateAndFixDiagrams(
       document,
       llmConfig,
-      messages,
+      fixMessages,
     )
     const existing = normalizeCanvasDoc(await loadPhaseDocument(workspaceRoot, phase, version))
     const saved = {
@@ -315,32 +386,53 @@ async function validateAndFixDiagrams(
 
     for (const d of diagrams) {
       const result = await parseMermaid(d.code)
-      if (!result.ok) failures.push({ ...d, error: result.error })
-    }
-
-    if (failures.length === 0) return { blocks: next, notes }
-
-    if (attempt === DIAGRAM_FIX_RETRIES) {
-      // Last resort: swap in a known-valid overview rather than deleting the block.
-      for (const f of failures) {
-        const block = next[f.index]
-        if (!block || typeof block !== 'object') continue
+      if (!result.ok) {
+        failures.push({ ...d, error: result.error })
+        continue
+      }
+      // Persist normalized source (unescaped \\n, stripped fences).
+      const block = next[d.index]
+      if (block && typeof block === 'object') {
         const b = { ...(block as Record<string, unknown>) }
         const props =
           b.props && typeof b.props === 'object' && !Array.isArray(b.props)
             ? { ...(b.props as Record<string, unknown>) }
             : {}
-        props.code = FALLBACK_OVERVIEW_MERMAID
-        if (typeof props.title !== 'string' || !props.title.trim()) {
-          props.title = 'High-level overview'
-        }
-        props.source = 'llm'
-        b.type = 'diagram'
+        props.code = result.code
         b.props = props
-        next[f.index] = b
+        next[d.index] = b
+      }
+    }
+
+    if (failures.length === 0) return { blocks: next, notes }
+
+    if (attempt === DIAGRAM_FIX_RETRIES) {
+      // Last resort: replace with a warn callout — never a canned fake diagram.
+      for (const f of failures) {
+        const block = next[f.index]
+        if (!block || typeof block !== 'object') continue
+        const props =
+          (block as Record<string, unknown>).props &&
+          typeof (block as Record<string, unknown>).props === 'object' &&
+          !Array.isArray((block as Record<string, unknown>).props)
+            ? ((block as Record<string, unknown>).props as Record<string, unknown>)
+            : {}
+        const title =
+          typeof props.title === 'string' && props.title.trim()
+            ? props.title.trim()
+            : 'Diagram'
+        next[f.index] = {
+          type: 'callout',
+          props: {
+            variant: 'warn',
+            title: `${title} — Mermaid could not be validated`,
+          },
+          content:
+            'Ask me to regenerate this diagram from the codebase or our chat so I can validate Mermaid again.',
+        }
       }
       notes.push(
-        `Replaced ${failures.length} invalid Mermaid diagram(s) with a simple overview after failed parse retries.`,
+        `Replaced ${failures.length} invalid Mermaid diagram(s) with a warning callout after failed parse retries.`,
       )
       return { blocks: next, notes }
     }
@@ -372,7 +464,7 @@ async function validateAndFixDiagrams(
           b.props && typeof b.props === 'object' && !Array.isArray(b.props)
             ? { ...(b.props as Record<string, unknown>) }
             : {}
-        props.code = fix.code
+        props.code = normalizeMermaidSource(fix.code) || fix.code
         if (props.source !== 'code-index') props.source = 'llm'
         b.type = 'diagram'
         b.props = props

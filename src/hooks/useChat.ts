@@ -23,12 +23,15 @@ const WELCOME: ChatMessage = {
   timestamp: Date.now(),
 }
 
-const TIMEOUT_MS = 25_000
+// Agentic chat can make several tool + LLM round-trips, so allow generous time.
+const TIMEOUT_MS = 180_000
 
 export function useChat(phase: string) {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME])
   const [isTyping, setIsTyping] = useState(false)
+  /** Interim status from the extension (lazy index sync, thinking, …). */
+  const [statusText, setStatusText] = useState<string | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const toggleOpen = useCallback(() => {
@@ -49,9 +52,13 @@ export function useChat(phase: string) {
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       const msg = event.data
+      if (msg.type === 'chatStatus') {
+        setStatusText(typeof msg.text === 'string' ? msg.text : null)
+      }
       if (msg.type === 'chatResponse') {
         clearTimeout_()
         setIsTyping(false)
+        setStatusText(null)
         const reply: ChatMessage = {
           id: nextId(),
           role: 'assistant',
@@ -94,11 +101,13 @@ export function useChat(phase: string) {
       }
 
       setIsTyping(true)
+      setStatusText(null)
       vscode.postMessage({ type: 'chatMessage', text: trimmed, phase })
 
       clearTimeout_()
       timeoutRef.current = setTimeout(() => {
         setIsTyping(false)
+        setStatusText(null)
         const timeoutMsg: ChatMessage = {
           id: nextId(),
           role: 'assistant',
@@ -114,6 +123,7 @@ export function useChat(phase: string) {
   const clearMessages = useCallback(() => {
     clearTimeout_()
     setIsTyping(false)
+    setStatusText(null)
     setMessages([WELCOME])
   }, [clearTimeout_])
 
@@ -125,5 +135,6 @@ export function useChat(phase: string) {
     sendMessage,
     clearMessages,
     isTyping,
+    statusText,
   }
 }

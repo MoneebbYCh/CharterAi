@@ -4,6 +4,9 @@ import * as crypto from 'crypto'
 import * as ts from 'typescript'
 import { spawn } from 'child_process'
 import { LEGACY_STATE_DIR, STATE_DIR } from './brand'
+import { chunkFile } from './ai/chunker'
+import { embedTexts, type EmbeddingConfig } from './ai/embeddings'
+import { VectorStore } from './ai/vectorStore'
 
 export interface FileEntry {
   path: string
@@ -170,6 +173,84 @@ export class CodeIndexer {
     await this.writeIndex(index)
     onProgress?.({ phase: 'complete', percent: 100 })
     return index
+  }
+
+  /**
+   * Incrementally sync the semantic embedding index for this workspace.
+   * Only re-chunks/re-embeds files whose content hash changed since last run,
+   * removes vectors for deleted files, and persists the vector store.
+   */
+  async syncEmbeddings(
+    embedCfg: EmbeddingConfig,
+    onProgress?: ProgressCallback,
+  ): Promise<{ changed: number; total: number; chunks: number }> {
+    const store = new VectorStore(this.workspaceRoot)
+    store.load()
+    // A model change invalidates every existing vector.
+    if (store.getModel() !== embedCfg.model) {
+      store.resetModel(embedCfg.model, 0)
+    }
+
+    onProgress?.({ phase: 'embedding-scan', percent: 0 })
+    const absFiles = this.collectSourceFiles()
+    const relHashes = this.computeFileHashes(absFiles)
+    const rels = Object.keys(relHashes)
+
+    for (const known of store.knownFiles()) {
+      if (!(known in relHashes)) store.removeFile(known)
+    }
+
+    const changed = rels.filter((r) => store.fileHash(r) !== relHashes[r])
+    let done = 0
+    try {
+      for (const rel of changed) {
+        const abs = path.join(this.workspaceRoot, rel)
+        let content = ''
+        try {
+          content = fs.readFileSync(abs, 'utf-8')
+        } catch {
+          store.removeFile(rel)
+          done++
+          continue
+        }
+
+        const chunks = chunkFile(rel, content)
+        if (chunks.length === 0) {
+          // Record the hash so we don't re-attempt an unchunkable file every run.
+          store.upsertFile(rel, relHashes[rel], [])
+        } else {
+          const vectors = await embedTexts(chunks.map((c) => c.text), embedCfg)
+          const entries = chunks
+            .map((c, i) => ({
+              meta: {
+                id: c.id,
+                file: c.file,
+                startLine: c.startLine,
+                endLine: c.endLine,
+                symbol: c.symbol,
+                kind: c.kind,
+              },
+              vector: vectors[i] ?? [],
+            }))
+            .filter((e) => e.vector.length > 0)
+          store.upsertFile(rel, relHashes[rel], entries)
+        }
+
+        done++
+        onProgress?.({
+          phase: 'embedding',
+          percent: changed.length ? Math.round((done / changed.length) * 100) : 100,
+        })
+      }
+    } catch (err) {
+      // Persist partial progress so a later run resumes instead of restarting.
+      store.save()
+      throw err
+    }
+
+    store.save()
+    onProgress?.({ phase: 'embedding-complete', percent: 100 })
+    return { changed: changed.length, total: rels.length, chunks: store.chunkCount() }
   }
 
   async loadIndex(): Promise<CodeIndex | null> {
