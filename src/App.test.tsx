@@ -23,7 +23,7 @@ describe('App workspace state', () => {
   it('shows the no-workspace notice when no folder is open', async () => {
     render(<App />)
     sendWorkspaceInfo({ type: 'workspaceInfo', path: '', name: '', available: false })
-    expect(await screen.findByText(/Open a folder to use Charter Ai/i)).toBeTruthy()
+    expect(await screen.findByText(/Open a folder to get started/i)).toBeTruthy()
   })
 
   it('leaves the connecting screen and renders the pipeline when a folder is open', async () => {
@@ -31,7 +31,7 @@ describe('App workspace state', () => {
     sendWorkspaceInfo({ type: 'workspaceInfo', path: '/tmp/demo', name: 'demo', available: true })
     await waitFor(() => {
       expect(screen.queryByText('Connecting to workspace…')).toBeNull()
-      expect(screen.queryByText(/Open a folder to use Charter Ai/i)).toBeNull()
+      expect(screen.queryByText(/Open a folder to get started/i)).toBeNull()
     })
   })
 

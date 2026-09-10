@@ -62,6 +62,11 @@ function clearAllDocs() {
   }
 }
 
+const ASK_HINTS = [
+  'What docs does this project need?',
+  'Add an ADR and API contract',
+]
+
 export function HomePage({
   onNavigate,
   onAsk,
@@ -72,7 +77,6 @@ export function HomePage({
   const [profile] = useState(() => loadProfile())
 
   const [pendingReset, setPendingReset] = useState(false)
-  // Bumped whenever the custom document-type list changes.
   const [docTypesRevLocal, setDocTypesRev] = useState(0)
   const docTypesRev = docTypesRevLocal + docTypesRevProp
   const [showNewDoc, setShowNewDoc] = useState(false)
@@ -124,330 +128,196 @@ export function HomePage({
     setDocTypesRev((n) => n + 1)
   }
 
+  const submitAsk = (text: string) => {
+    const trimmed = text.trim()
+    if (!trimmed || isAsking || !onAsk) return
+    onAsk(trimmed)
+    setHomeAsk('')
+  }
+
+  const workspaceLabel = workspace?.name
+    ?? (getVscodeApi() ? 'Detecting…' : 'Local preview')
+
   return (
     <div className="home-desktop h-screen w-full overflow-hidden flex flex-col dither-bg">
       {noWorkspace ? (
-        <div className="home-mac-window flex-1 min-h-0 m-2 md:m-3 border-2 border-on-background bg-white mac-window-shadow flex flex-col items-center justify-center gap-4 p-8 text-center">
-          <BrandMark size="lg" />
+        <div className="home-mac-window flex-1 min-h-0 m-2 md:m-3 border-2 border-on-background bg-white mac-window-shadow flex flex-col items-center justify-center gap-5 p-8 text-center">
+          <BrandMark size="lg" markOnly className="home-empty-mascot" />
           <h2
             className="text-xl font-bold text-on-background"
             style={{ fontFamily: 'var(--font-headline)' }}
           >
-            Open a folder to use Charter Ai
+            Open a folder to get started
           </h2>
-          <p className="text-sm text-on-surface-variant max-w-md" style={{ fontFamily: 'var(--font-body)' }}>
-            Drafts and AI need a workspace. Open a project folder in VS Code, then run
-            “Charter Ai: Open Pipeline” again.
+          <p className="text-sm text-on-surface-variant max-w-sm" style={{ fontFamily: 'var(--font-body)' }}>
+            Charter needs a project folder. Open one in VS Code, then run Charter Ai again.
           </p>
         </div>
       ) : (
-      <div className="home-mac-window flex-1 min-h-0 m-2 md:m-3 border-2 border-on-background bg-white mac-window-shadow flex flex-col">
-        <div className="flex items-center gap-2 border-b-2 border-on-background bg-secondary-container px-2 py-1 shrink-0">
-          <div className="mac-striped-header flex-1 min-w-0" aria-hidden />
-          <span className="px-1">
+        <div className="home-mac-window flex-1 min-h-0 m-2 md:m-3 border-2 border-on-background bg-white mac-window-shadow flex flex-col">
+          <header className="home-chrome shrink-0">
+            <div className="mac-striped-header home-chrome-stripe" aria-hidden />
             <BrandMark size="sm" />
-          </span>
-          <div className="mac-striped-header flex-1 min-w-0" aria-hidden />
-        </div>
+            <div className="mac-striped-header home-chrome-stripe" aria-hidden />
+            <button
+              type="button"
+              className="home-chrome-profile"
+              onClick={() => onNavigate({ page: 'profile' })}
+              title="Open profile"
+              aria-label={`Open profile for ${profile.name}`}
+            >
+              <span className="home-chrome-profile-avatar" aria-hidden>
+                {profileInitials(profile.name)}
+              </span>
+              <span className="home-chrome-profile-meta">
+                <span className="home-chrome-profile-name">{profile.name}</span>
+                <span className="home-chrome-profile-role">{profile.role}</span>
+              </span>
+            </button>
+          </header>
 
-        <div
-          className="home-workspace-bar"
-          title={workspace?.path ?? 'No workspace folder open'}
-        >
-          <span className="home-workspace-bar-label">Workspace</span>
-          <span className="home-workspace-bar-sep" aria-hidden>
-            ·
-          </span>
-          {workspace ? (
-            <>
-              <span className="home-workspace-bar-name">{workspace.name}</span>
-              <span className="home-workspace-bar-path">{workspace.path}</span>
-            </>
-          ) : (
-            <span className="home-workspace-bar-path">
-              {getVscodeApi() ? 'Detecting folder…' : 'Not running inside VS Code'}
-            </span>
-          )}
-        </div>
-
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className="p-4 md:p-6 border-b-2 border-on-background">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div className="min-w-0">
-                <BrandMark size="lg" className="mb-3" />
-                <p className="text-sm text-on-surface-variant mb-4 max-w-md">
-                  Ask below to generate the docs this project needs — the Documents grid starts empty.
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <section className="home-hero" aria-label="Ask Charter Ai">
+              <div className="home-hero-mascot" aria-hidden>
+                <BrandMark size="lg" markOnly />
+              </div>
+              <div className="home-hero-copy">
+                <p className="home-hero-line">
+                  {hasDraft ? 'Pick up where you left off — or ask for more.' : 'What should we document?'}
                 </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  {firstDocId ? (
+                <form
+                  className="home-ask-bar"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    submitAsk(homeAsk)
+                  }}
+                >
+                  <input
+                    className="home-ask-input"
+                    type="text"
+                    value={homeAsk}
+                    onChange={(e) => setHomeAsk(e.target.value)}
+                    placeholder="Ask about docs for this repo…"
+                    disabled={Boolean(isAsking) || !onAsk}
+                    aria-label="Ask Charter Ai"
+                  />
+                  <button
+                    type="submit"
+                    className="home-ask-submit border-2 border-on-background bg-primary text-on-primary font-bold px-5 py-2 text-sm outset-button hover:opacity-90 disabled:opacity-40"
+                    style={{ fontFamily: 'var(--font-label)' }}
+                    disabled={!homeAsk.trim() || Boolean(isAsking) || !onAsk}
+                  >
+                    {isAsking ? 'Working…' : 'Ask'}
+                  </button>
+                </form>
+                <div className="home-ask-hints">
+                  {ASK_HINTS.map((hint) => (
+                    <button
+                      key={hint}
+                      type="button"
+                      className="home-ask-chip"
+                      disabled={Boolean(isAsking) || !onAsk}
+                      onClick={() => submitAsk(hint)}
+                    >
+                      {hint}
+                    </button>
+                  ))}
+                  {hasDraft && firstDocId ? (
                     <button
                       type="button"
+                      className="home-ask-chip home-ask-chip--accent"
                       onClick={() => onNavigate({ page: firstDocId })}
-                      className="border-2 border-on-background bg-primary text-on-primary font-bold px-6 py-2 text-sm outset-button hover:opacity-90"
-                      style={{ fontFamily: 'var(--font-label)' }}
                     >
-                      {hasDraft ? 'Resume Documents' : 'Open Documents'}
+                      Resume documents
                     </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowNewDoc(true)}
-                      className="border-2 border-on-background bg-primary text-on-primary font-bold px-6 py-2 text-sm outset-button hover:opacity-90"
-                      style={{ fontFamily: 'var(--font-label)' }}
-                    >
-                      New Document
-                    </button>
-                  )}
+                  ) : null}
+                </div>
+              </div>
+            </section>
+
+            <section className="home-docs" aria-label="Documents">
+              <div className="home-docs-header">
+                <h2 className="home-docs-title">Documents</h2>
+                <div className="home-docs-actions">
                   <button
                     type="button"
+                    className="home-docs-browse"
                     onClick={() => onNavigate({ page: 'templates' })}
-                    className="border-2 border-on-background bg-white text-on-background font-bold px-6 py-2 text-sm outset-button hover:bg-surface-container-low"
-                    style={{ fontFamily: 'var(--font-label)' }}
-                    title="Browse document templates"
                   >
                     Browse Templates
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setPendingReset(true)}
-                    className="border-2 border-on-background bg-white text-on-background font-bold px-6 py-2 text-sm outset-button hover:bg-surface-container-low disabled:opacity-40"
-                    style={{ fontFamily: 'var(--font-label)' }}
-                    title="Clear all documents back to blank"
-                    disabled={!hasDraft}
-                  >
-                    Reset Documents
-                  </button>
+                  {hasDraft ? (
+                    <button
+                      type="button"
+                      className="home-docs-link home-docs-link--danger"
+                      onClick={() => setPendingReset(true)}
+                      title="Clear all documents"
+                    >
+                      Reset
+                    </button>
+                  ) : null}
                 </div>
               </div>
 
-              <button
-                type="button"
-                className="home-profile-panel border-2 border-on-background bg-surface-container-low inset-field p-3 min-w-[200px] text-left"
-                onClick={() => onNavigate({ page: 'profile' })}
-                title="Open profile"
-              >
-                <div
-                  className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2"
-                  style={{ fontFamily: 'var(--font-label)' }}
-                >
-                  Profile
-                </div>
-                <div className="flex items-center gap-3">
-                  <span
-                    className="w-10 h-10 border-2 border-on-background bg-primary text-on-primary flex items-center justify-center text-xs font-bold mac-window-shadow shrink-0"
-                    style={{ fontFamily: 'var(--font-label)' }}
-                    aria-hidden
-                  >
-                    {profileInitials(profile.name)}
-                  </span>
-                  <span className="min-w-0">
-                    <span
-                      className="block font-bold text-sm text-on-background truncate"
-                      style={{ fontFamily: 'var(--font-headline)' }}
+              <div className="home-docs-grid">
+                {docTypes.length === 0 ? (
+                  <div className="home-docs-empty">
+                    <p>Nothing here yet — ask above, or add one.</p>
+                  </div>
+                ) : null}
+                {docTypes.map((doc) => (
+                  <div key={doc.id} className="home-doc-card group">
+                    <button
+                      type="button"
+                      onClick={() => onNavigate({ page: doc.id })}
+                      className="home-doc-card-main"
                     >
-                      {profile.name}
-                    </span>
-                    <span
-                      className="block text-[11px] text-on-surface-variant truncate"
-                      style={{ fontFamily: 'var(--font-label)' }}
+                      <span className="material-symbols-outlined home-doc-card-icon">
+                        {doc.icon}
+                      </span>
+                      <span className="home-doc-card-title">{doc.title}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setPendingDeleteDoc(doc)
+                      }}
+                      className="home-doc-card-delete"
+                      title={`Delete "${doc.title}"`}
+                      aria-label={`Delete ${doc.title}`}
                     >
-                      {profile.role}
-                    </span>
-                    <span
-                      className="block text-[10px] text-primary mt-0.5 font-bold"
-                      style={{ fontFamily: 'var(--font-label)' }}
-                    >
-                      Open profile…
-                    </span>
-                  </span>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <div className="home-ask-section border-b-2 border-on-background px-4 md:px-6 py-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span
-                className="text-xs font-bold tracking-widest text-on-surface-variant uppercase"
-                style={{ fontFamily: 'var(--font-label)' }}
-              >
-                Ask Charter Ai
-              </span>
-              <div className="flex-1 h-px bg-on-background/30" />
-              <span
-                className="text-[11px] text-on-surface-variant"
-                style={{ fontFamily: 'var(--font-label)' }}
-              >
-                Reads the codebase · builds your doc set
-              </span>
-            </div>
-            <form
-              className="home-ask-bar"
-              onSubmit={(e) => {
-                e.preventDefault()
-                const text = homeAsk.trim()
-                if (!text || isAsking || !onAsk) return
-                onAsk(text)
-                setHomeAsk('')
-              }}
-            >
-              <input
-                className="home-ask-input"
-                type="text"
-                value={homeAsk}
-                onChange={(e) => setHomeAsk(e.target.value)}
-                placeholder="e.g. What docs does this repo need? Add an ADR + API contract…"
-                disabled={Boolean(isAsking) || !onAsk}
-                aria-label="Ask Charter Ai to design documents for this project"
-              />
-              <button
-                type="submit"
-                className="home-ask-submit border-2 border-on-background bg-primary text-on-primary font-bold px-5 py-2 text-sm outset-button hover:opacity-90 disabled:opacity-40"
-                style={{ fontFamily: 'var(--font-label)' }}
-                disabled={!homeAsk.trim() || Boolean(isAsking) || !onAsk}
-              >
-                {isAsking ? 'Working…' : 'Ask'}
-              </button>
-            </form>
-            <div className="home-ask-hints">
-              {[
-                'What documents does this project need?',
-                'Build a docs pipeline for this codebase',
-                'Add a migration runbook and API contract',
-              ].map((hint) => (
+                      ×
+                    </button>
+                  </div>
+                ))}
                 <button
-                  key={hint}
                   type="button"
-                  className="home-ask-chip"
-                  disabled={Boolean(isAsking) || !onAsk}
-                  onClick={() => {
-                    if (!onAsk || isAsking) return
-                    onAsk(hint)
-                  }}
+                  onClick={() => setShowNewDoc(true)}
+                  className="home-doc-new"
+                  title="Add a document"
                 >
-                  {hint}
+                  <span className="material-symbols-outlined">add</span>
+                  <span>New</span>
                 </button>
-              ))}
-            </div>
+              </div>
+            </section>
           </div>
 
-          {hasDraft && firstDocId && (
-            <div className="border-b-2 border-on-background bg-surface-container-low px-4 md:px-6 py-2 flex items-center justify-between flex-wrap gap-2">
-              <span className="text-xs text-on-surface-variant" style={{ fontFamily: 'var(--font-label)' }}>
-                Active draft on disk
-              </span>
-              <button
-                type="button"
-                onClick={() => onNavigate({ page: firstDocId })}
-                className="border-2 border-on-background bg-primary text-on-primary font-bold px-4 py-1 text-xs outset-button"
-                style={{ fontFamily: 'var(--font-label)' }}
-              >
-                Open Documents
-              </button>
-            </div>
-          )}
-
-          <div className="p-4 md:p-6 pb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <span
-                className="text-xs font-bold tracking-widest text-on-surface-variant uppercase"
-                style={{ fontFamily: 'var(--font-label)' }}
-              >
-                Documents
-              </span>
-              <div className="flex-1 h-px bg-on-background/30" />
-              <span
-                className="text-[11px] text-on-surface-variant"
-                style={{ fontFamily: 'var(--font-label)' }}
-              >
-                {docTypes.length === 0
-                  ? 'Empty until you ask or add one'
-                  : `${docTypes.length} document${docTypes.length === 1 ? '' : 's'}`}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-0 border-2 border-on-background">
-              {docTypes.length === 0 ? (
-                <div className="col-span-2 md:col-span-3 border border-on-background bg-surface-container-low p-6 text-center">
-                  <p
-                    className="text-sm text-on-surface-variant mb-1"
-                    style={{ fontFamily: 'var(--font-body)' }}
-                  >
-                    No documents yet.
-                  </p>
-                  <p
-                    className="text-[11px] text-on-surface-variant mb-3"
-                    style={{ fontFamily: 'var(--font-label)' }}
-                  >
-                    Use Ask Charter Ai above, browse templates, or add one manually.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate({ page: 'templates' })}
-                    className="border-2 border-on-background bg-white text-on-background font-bold px-4 py-1.5 text-xs outset-button hover:bg-surface-container-low"
-                    style={{ fontFamily: 'var(--font-label)' }}
-                  >
-                    Browse Templates
-                  </button>
-                </div>
-              ) : null}
-              {docTypes.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="relative border border-on-background bg-white hover:bg-surface-container-low transition-colors group min-h-[110px] flex flex-col"
-                >
-                  <button
-                    type="button"
-                    onClick={() => onNavigate({ page: doc.id })}
-                    className="flex-1 p-4 flex flex-col text-left cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-on-background group-hover:text-primary mb-3">
-                      {doc.icon}
-                    </span>
-                    <h3
-                      className="font-bold text-sm text-on-background mb-0.5 pr-5"
-                      style={{ fontFamily: 'var(--font-headline)' }}
-                    >
-                      {doc.title}
-                    </h3>
-                    <p
-                      className="text-[11px] font-semibold text-on-background/75"
-                      style={{ fontFamily: 'var(--font-label)' }}
-                    >
-                      Pipeline document
-                    </p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setPendingDeleteDoc(doc)
-                    }}
-                    className="absolute top-1.5 right-1.5 w-5 h-5 flex items-center justify-center border border-on-background bg-white text-on-background hover:bg-error hover:text-on-primary text-[13px] leading-none"
-                    title={`Delete "${doc.title}"`}
-                    aria-label={`Delete ${doc.title}`}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => setShowNewDoc(true)}
-                className="border border-on-background p-4 bg-secondary-container hover:bg-surface-container-low transition-colors min-h-[110px] flex flex-col items-center justify-center text-center cursor-pointer"
-                title="Add a document to the pipeline"
-              >
-                <span className="material-symbols-outlined text-primary mb-2 text-[28px]">add</span>
-                <span
-                  className="font-bold text-xs text-on-background"
-                  style={{ fontFamily: 'var(--font-label)' }}
-                >
-                  New Document
-                </span>
-              </button>
-            </div>
-          </div>
+          <footer
+            className="home-workspace-footer shrink-0"
+            title={workspace?.path ?? undefined}
+          >
+            <span className="home-workspace-footer-label">Opened in workspace</span>
+            <span className="home-workspace-footer-sep" aria-hidden>
+              ·
+            </span>
+            <span className="home-workspace-footer-name">{workspaceLabel}</span>
+            {workspace?.path ? (
+              <span className="home-workspace-footer-path">{workspace.path}</span>
+            ) : null}
+          </footer>
         </div>
-      </div>
       )}
 
       {pendingReset ? (
