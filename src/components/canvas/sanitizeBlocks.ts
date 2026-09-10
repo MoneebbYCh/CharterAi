@@ -3,7 +3,7 @@ import type { BlockNoteBlock } from '../../types/document'
 
 const CUSTOM_TYPES = new Set(['diagram'])
 
-/** Legacy custom shapes removed from the schema — convert on load. */
+/** Legacy custom canvas widgets — convert to quote / bullets / table on load. */
 const LEGACY_SHAPE_TYPES = new Set([
   'callout',
   'kpiGrid',
@@ -431,6 +431,21 @@ export function sanitizeCanvasBlocks(blocks: BlockNoteBlock[]): PartialBlock[] {
       if (extracted.title) props.title = extracted.title
       else if (props.title == null) props.title = ''
       if (props.source !== 'code-index') props.source = 'llm'
+
+      const height = Number(props.frameHeight)
+      props.frameHeight =
+        Number.isFinite(height) && height > 0
+          ? Math.min(900, Math.max(160, Math.round(height)))
+          : 360
+      const widthPct = Number(props.frameWidthPct)
+      props.frameWidthPct =
+        Number.isFinite(widthPct) && widthPct > 0
+          ? Math.min(100, Math.max(40, Math.round(widthPct)))
+          : 100
+      if (props.align !== 'left' && props.align !== 'right' && props.align !== 'center') {
+        props.align = 'center'
+      }
+
       delete props.mermaid
       delete props.sourceCode
       delete props.diagram

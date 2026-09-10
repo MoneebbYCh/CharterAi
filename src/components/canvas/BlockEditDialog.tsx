@@ -10,6 +10,7 @@ interface BlockEditDialogProps {
   children: ReactNode
   saveLabel?: string
   wide?: boolean
+  className?: string
 }
 
 /** Lightweight modal for editing custom block props. */
@@ -21,6 +22,7 @@ export function BlockEditDialog({
   children,
   saveLabel = 'Save',
   wide = false,
+  className,
 }: BlockEditDialogProps) {
   useEffect(() => {
     if (!open) return
@@ -42,7 +44,14 @@ export function BlockEditDialog({
       }}
     >
       <div
-        className={`rg-edit-dialog dialog-panel${wide ? ' rg-edit-dialog--wide' : ''}`}
+        className={[
+          'rg-edit-dialog',
+          'dialog-panel',
+          wide ? 'rg-edit-dialog--wide' : '',
+          className ?? '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         role="dialog"
         aria-modal="true"
         aria-label={title}

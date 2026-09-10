@@ -11,8 +11,7 @@ export interface RenderedCanvasDocument {
 
 /**
  * Deterministic DocumentIR → CanvasDocument renderer.
- * Custom IR widgets (callout/risk/scope/kpi/stakeholders) compile to quote,
- * bullet, or native BlockNote table — canvas schema only has diagram + defaults.
+ * IR is markdown / lists / tables / mermaid only → BlockNote defaults + diagram.
  */
 export function renderDocument(ir: DocumentIR): RenderedCanvasDocument {
   const blocks: Array<Record<string, unknown>> = []
@@ -70,12 +69,6 @@ function renderBlock(block: IRBlock): Array<Record<string, unknown>> {
       return block.items.map((item) => ({ type: 'numberedListItem', content: item }))
     case 'table':
       return nativeTable(block.header, block.rows)
-    case 'callout': {
-      const title = block.title?.trim()
-      const body = block.text.trim()
-      const text = title ? `**${title}:** ${body}` : body
-      return [{ type: 'quote', content: text }]
-    }
     case 'mermaid':
       return [
         {
@@ -83,42 +76,5 @@ function renderBlock(block: IRBlock): Array<Record<string, unknown>> {
           props: { code: block.diagram.trim(), title: block.title ?? '', source: 'llm' },
         },
       ]
-    case 'risk':
-      return nativeTable(
-        ['Risk', 'Likelihood', 'Impact', 'Mitigation'],
-        block.rows.map((r) => [
-          r.risk,
-          r.likelihood ?? '',
-          r.impact ?? '',
-          r.mitigation ?? '',
-        ]),
-      )
-    case 'scope': {
-      const out: Array<Record<string, unknown>> = []
-      if (block.inScope.length) {
-        out.push({ type: 'paragraph', content: '**In scope**' })
-        out.push(...block.inScope.map((item) => ({ type: 'bulletListItem', content: item })))
-      }
-      if (block.outOfScope.length) {
-        out.push({ type: 'paragraph', content: '**Out of scope**' })
-        out.push(...block.outOfScope.map((item) => ({ type: 'bulletListItem', content: item })))
-      }
-      return out
-    }
-    case 'kpiGrid':
-      return nativeTable(
-        ['Metric', 'Target', 'Method'],
-        block.items.map((i) => [i.metric, i.target ?? '', i.method ?? '']),
-      )
-    case 'stakeholderTable':
-      return nativeTable(
-        ['Name / Role', 'Interest', 'Influence', 'Concern'],
-        block.rows.map((r) => [
-          r.nameRole,
-          r.interest ?? '',
-          r.influence ?? '',
-          r.concern ?? '',
-        ]),
-      )
   }
 }

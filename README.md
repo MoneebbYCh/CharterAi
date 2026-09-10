@@ -2,8 +2,7 @@
 
 A VS Code extension for designing and drafting project documents. Home starts empty —
 New Document (or the Ask bar) builds the doc set; each document is a BlockNote canvas
-with custom blocks (KPIs, scope bounds, stakeholders, risks, Mermaid diagrams) and
-templates.
+(headings, lists, tables, Mermaid diagrams) with templates.
 
 > **Agent status:** CharterAI is a read-only, evidence-grounded repository analysis
 > agent. It streams task activity and answers, supports cancellation and recovery, and
@@ -26,18 +25,21 @@ The webview talks to the host over `postMessage`.
 ## Documents and blocks
 
 Each pipeline document is a BlockNote canvas persisted as JSON under
-`.charter-ai/<id>.json` (legacy `.req-gath-sys/` is still read as a fallback). Custom
-blocks: `callout`, `kpiGrid`, `scopeBounds`, `stakeholderTable`, `riskList`, `diagram`
-(Mermaid), plus standard headings, paragraphs, and lists.
+`.charter-ai/<id>.json` (legacy `.req-gath-sys/` is still read as a fallback). The
+editable canvas supports standard BlockNote blocks plus `diagram` (Mermaid). Tables,
+lists, and quotes cover KPIs, stakeholders, risks, and notes — there are no separate
+KPI/callout/risk widgets in the editor.
 
-Every block the agent emits is deterministically sanitized before checkpointing
-(variant aliases, ragged table rows, fence-wrapped diagrams, empty items, and
-enum casing are coerced; hopeless shapes become editable warn callouts). Mermaid
-diagrams additionally pass the same `mermaid.parse` grammar the webview renders
-(validated in the isolated worker under jsdom), get one model repair pass fed with
-the exact parse error, and degrade to an editable "Diagram needs review" callout if
-they still fail. The webview remains the final backstop: any diagram that slips
-through renders an inline error instead of a broken canvas.
+Agent output is Markdown-first (`{"md":"..."}`) with optional typed Mermaid parts —
+no KPI/callout/risk/stakeholder IR types. Legacy model payloads with those shapes are
+coerced into tables or Markdown review notes at sanitize time. Every block is sanitized
+before checkpointing (ragged table rows, fence-wrapped diagrams, empty items are
+coerced; hopeless payloads become editable Markdown notes). Mermaid diagrams
+additionally pass the same `mermaid.parse` grammar the webview renders (validated in
+the isolated worker under jsdom), get one model repair pass fed with the exact parse
+error, and degrade to an editable "Diagram needs review" Markdown note if they still
+fail. The webview remains the final backstop: any diagram that slips through renders
+an inline error instead of a broken canvas.
 
 ## Getting started
 

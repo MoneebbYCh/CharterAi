@@ -5,6 +5,8 @@ export interface OutlineEntry {
   type: string
   label: string
   kind: 'heading' | 'shape' | 'text'
+  /** Heading level 1–6 when kind is heading. */
+  level?: number
 }
 
 function plainText(content: unknown): string {
@@ -29,6 +31,12 @@ function propsOf(block: BlockNoteBlock): Record<string, unknown> {
 
 const SHAPE_TYPES = new Set(['diagram', 'table'])
 
+function clampHeadingLevel(raw: unknown): number {
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return 1
+  return Math.min(6, Math.max(1, Math.round(n)))
+}
+
 /** Build a navigable outline from BlockNote document blocks. */
 export function buildCanvasOutline(blocks: BlockNoteBlock[]): OutlineEntry[] {
   const out: OutlineEntry[] = []
@@ -41,11 +49,12 @@ export function buildCanvasOutline(blocks: BlockNoteBlock[]): OutlineEntry[] {
     const text = plainText(block.content)
 
     if (type === 'heading') {
-      const level = Number(props.level) || 1
+      const level = clampHeadingLevel(props.level)
       out.push({
         id,
         type,
         kind: 'heading',
+        level,
         label: text || `Heading ${level}`,
       })
       continue
@@ -79,10 +88,12 @@ export function buildCanvasOutline(blocks: BlockNoteBlock[]): OutlineEntry[] {
   return out
 }
 
-export function outlineTypeBadge(type: string): string {
+export function outlineTypeBadge(type: string, level?: number): string {
   switch (type) {
-    case 'heading':
-      return 'H'
+    case 'heading': {
+      const n = level && level >= 1 && level <= 6 ? level : 1
+      return `H${n}`
+    }
     case 'diagram':
       return 'DIAG'
     case 'table':

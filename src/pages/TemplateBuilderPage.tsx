@@ -261,7 +261,7 @@ export function TemplateBuilderPage({
             {fromCanvas ? (
               <div className={`tb-banner${hadHeadings ? '' : ' tb-banner--warn'}`} role="status">
                 {hadHeadings
-                  ? `${sections.length} section${sections.length === 1 ? '' : 's'} detected from headings. Typed blocks (diagrams, tables, KPIs, …) are included as starters — adjust freely before saving.`
+                  ? `${sections.length} section${sections.length === 1 ? '' : 's'} detected from headings. Tables and diagrams found in those sections are included as starters — adjust freely before saving.`
                   : 'No usable section headings were detected. Define the outline manually below.'}
               </div>
             ) : null}

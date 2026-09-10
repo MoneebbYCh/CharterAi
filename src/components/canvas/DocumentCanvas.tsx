@@ -118,7 +118,7 @@ function DocumentCanvasInner({
     schema: canvasSchema,
     initialContent,
     placeholders: {
-      default: "Type '/' for Table, Diagram…",
+      default: "Type '/' for Table or Diagram…",
       heading: 'Heading',
     },
   })

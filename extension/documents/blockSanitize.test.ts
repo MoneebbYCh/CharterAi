@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { sanitizeBlock, sanitizeBlockList, sanitizePartsList } from './blockSanitize'
 
 describe('sanitizeBlock', () => {
-  it('normalizes callout variant aliases and trims text', () => {
-    const block = sanitizeBlock({ type: 'callout', text: '  watch out  ', variant: 'warning' })
-    expect(block).toEqual({ type: 'callout', text: 'watch out', variant: 'warn' })
+  it('coerces legacy callouts into Markdown blockquotes', () => {
+    const block = sanitizeBlock({ type: 'callout', text: '  watch out  ', variant: 'warning', title: 'Heads up' })
+    expect(block).toEqual({ type: 'markdown', source: '> **Heads up:** watch out' })
   })
 
   it('drops an empty callout', () => {
@@ -37,7 +37,7 @@ describe('sanitizeBlock', () => {
     })
   })
 
-  it('normalizes risk levels and drops rows without a risk', () => {
+  it('coerces legacy risk widgets into tables', () => {
     const block = sanitizeBlock({
       type: 'risk',
       rows: [
@@ -45,23 +45,35 @@ describe('sanitizeBlock', () => {
         { risk: ' ', likelihood: 'M' },
       ],
     })
-    expect(block).toEqual({ type: 'risk', rows: [{ risk: 'Leak', likelihood: 'H', impact: 'L' }] })
+    expect(block).toEqual({
+      type: 'table',
+      header: ['Risk', 'Likelihood', 'Impact', 'Mitigation'],
+      rows: [['Leak', 'H', 'L', '']],
+    })
   })
 
-  it('drops kpiGrid items without a metric', () => {
+  it('coerces legacy kpiGrid into a Metric/Target/Method table', () => {
     const block = sanitizeBlock({
       type: 'kpiGrid',
       items: [{ metric: 'Latency', target: '<100ms' }, { target: 'no metric' }],
     })
-    expect(block).toEqual({ type: 'kpiGrid', items: [{ metric: 'Latency', target: '<100ms' }] })
+    expect(block).toEqual({
+      type: 'table',
+      header: ['Metric', 'Target', 'Method'],
+      rows: [['Latency', '<100ms', '']],
+    })
   })
 
-  it('drops empty scope strings', () => {
+  it('coerces legacy scope into Markdown lists', () => {
     const block = sanitizeBlock({ type: 'scope', inScope: ['X', ' '], outOfScope: ['', 'Y'] })
-    expect(block).toEqual({ type: 'scope', inScope: ['X'], outOfScope: ['Y'] })
+    expect(block?.type).toBe('markdown')
+    expect(block && 'source' in block ? block.source : '').toContain('**In scope**')
+    expect(block && 'source' in block ? block.source : '').toContain('- X')
+    expect(block && 'source' in block ? block.source : '').toContain('**Out of scope**')
+    expect(block && 'source' in block ? block.source : '').toContain('- Y')
   })
 
-  it('normalizes stakeholder levels and drops rows without nameRole', () => {
+  it('coerces legacy stakeholderTable into a native table', () => {
     const block = sanitizeBlock({
       type: 'stakeholderTable',
       rows: [
@@ -69,7 +81,11 @@ describe('sanitizeBlock', () => {
         { concern: 'orphaned' },
       ],
     })
-    expect(block).toEqual({ type: 'stakeholderTable', rows: [{ nameRole: 'SecOps', interest: 'H' }] })
+    expect(block).toEqual({
+      type: 'table',
+      header: ['Name / Role', 'Interest', 'Influence', 'Concern'],
+      rows: [['SecOps', 'H', '', '']],
+    })
   })
 
   it('trims list items and drops empties', () => {
@@ -102,7 +118,7 @@ describe('sanitizeBlock', () => {
 })
 
 describe('sanitizeBlockList', () => {
-  it('keeps valid blocks and coerces hopeless ones into editable callouts', () => {
+  it('keeps valid blocks and coerces hopeless ones into Markdown review notes', () => {
     const result = sanitizeBlockList({
       blocks: [
         { type: 'paragraph', text: 'ok' },
@@ -112,8 +128,8 @@ describe('sanitizeBlockList', () => {
     })
     expect(result?.blocks).toEqual([
       { type: 'paragraph', text: 'ok' },
-      { type: 'callout', variant: 'warn', title: 'Unsupported content', text: '{"type":"unknown"}' },
-      { type: 'callout', text: 'c', variant: 'error' },
+      { type: 'markdown', source: '> **Unsupported content:** {"type":"unknown"}' },
+      { type: 'markdown', source: '> **Note:** c' },
     ])
     expect(result?.coerced).toBe(1)
   })
@@ -126,7 +142,7 @@ describe('sanitizeBlockList', () => {
 })
 
 describe('sanitizePartsList', () => {
-  it('maps md parts to markdown IR and keeps widgets', () => {
+  it('maps md parts to markdown IR and coerces legacy widgets', () => {
     const result = sanitizePartsList({
       parts: [
         { md: 'Hello\n\n- a\n- b' },
@@ -135,7 +151,7 @@ describe('sanitizePartsList', () => {
     })
     expect(result?.blocks).toEqual([
       { type: 'markdown', source: 'Hello\n\n- a\n- b' },
-      { type: 'callout', text: 'Note', variant: 'info' },
+      { type: 'markdown', source: '> **Note:** Note' },
     ])
     expect(result?.coerced).toBe(0)
   })

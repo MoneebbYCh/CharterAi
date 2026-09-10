@@ -5,9 +5,11 @@ import { z } from 'zod'
  * never produces BlockNote internals directly — it emits this validated IR
  * and `DocumentRenderer` converts it to a complete CanvasDocument snapshot.
  * Every checkpoint is a FULL valid document, never a partial JSON fragment.
+ *
+ * Canvas-facing IR is intentionally slim: prose (markdown / paragraph / lists),
+ * tables, and Mermaid. KPI/risk/stakeholder/callout widgets are not IR types —
+ * the agent should express those as Markdown tables or blockquotes.
  */
-
-export type CalloutVariant = 'info' | 'warn' | 'success' | 'error'
 
 export type IRBlock =
   | { type: 'paragraph'; text: string }
@@ -16,12 +18,7 @@ export type IRBlock =
   | { type: 'table'; header: string[]; rows: string[][] }
   /** Prose from the model as CommonMark/GFM; expanded to canvas blocks at render time. */
   | { type: 'markdown'; source: string }
-  | { type: 'callout'; text: string; variant?: CalloutVariant; title?: string }
   | { type: 'mermaid'; diagram: string; title?: string }
-  | { type: 'risk'; rows: Array<{ risk: string; likelihood?: string; impact?: string; mitigation?: string }> }
-  | { type: 'scope'; inScope: string[]; outOfScope: string[] }
-  | { type: 'kpiGrid'; items: Array<{ metric: string; target?: string; method?: string }> }
-  | { type: 'stakeholderTable'; rows: Array<{ nameRole: string; interest?: string; influence?: string; concern?: string }> }
 
 export interface DocumentSection {
   heading: string
@@ -51,59 +48,10 @@ const markdownBlock = z.object({
   type: z.literal('markdown'),
   source: z.string().min(1).max(12_000),
 })
-const calloutBlock = z.object({
-  type: z.literal('callout'),
-  text: z.string().max(2_000),
-  variant: z.enum(['info', 'warn', 'success', 'error']).optional(),
-  title: z.string().max(200).optional(),
-})
 const mermaidBlock = z.object({
   type: z.literal('mermaid'),
   diagram: z.string().max(10_000),
   title: z.string().max(200).optional(),
-})
-const riskBlock = z.object({
-  type: z.literal('risk'),
-  rows: z
-    .array(
-      z.object({
-        risk: z.string().max(500),
-        likelihood: z.string().max(50).optional(),
-        impact: z.string().max(50).optional(),
-        mitigation: z.string().max(1_000).optional(),
-      }),
-    )
-    .max(40),
-})
-const scopeBlock = z.object({
-  type: z.literal('scope'),
-  inScope: z.array(z.string().max(1_000)).max(40),
-  outOfScope: z.array(z.string().max(1_000)).max(40),
-})
-const kpiGridBlock = z.object({
-  type: z.literal('kpiGrid'),
-  items: z
-    .array(
-      z.object({
-        metric: z.string().min(1).max(200),
-        target: z.string().max(200).optional(),
-        method: z.string().max(200).optional(),
-      }),
-    )
-    .max(40),
-})
-const stakeholderTableBlock = z.object({
-  type: z.literal('stakeholderTable'),
-  rows: z
-    .array(
-      z.object({
-        nameRole: z.string().min(1).max(200),
-        interest: z.string().max(20).optional(),
-        influence: z.string().max(20).optional(),
-        concern: z.string().max(500).optional(),
-      }),
-    )
-    .max(40),
 })
 
 export const irBlockSchema = z.discriminatedUnion('type', [
@@ -112,12 +60,7 @@ export const irBlockSchema = z.discriminatedUnion('type', [
   numberedBlock,
   tableBlock,
   markdownBlock,
-  calloutBlock,
   mermaidBlock,
-  riskBlock,
-  scopeBlock,
-  kpiGridBlock,
-  stakeholderTableBlock,
 ])
 
 export const documentSectionSchema = z.object({

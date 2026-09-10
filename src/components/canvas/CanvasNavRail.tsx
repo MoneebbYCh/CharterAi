@@ -19,7 +19,7 @@ function findBlockEl(id: string): HTMLElement | null {
 
 /**
  * Jump-to-section nav rail.
- * Collapsed = slim evenly-spaced dots. Expanded = readable stacked list (no overlap).
+ * Collapsed = dots clustered in the middle of the track. Expanded = readable stacked list.
  */
 export function CanvasNavRail({ editor, blocks, scrollRef }: CanvasNavRailProps) {
   const outlineSource = useMemo(() => {
@@ -30,12 +30,26 @@ export function CanvasNavRail({ editor, blocks, scrollRef }: CanvasNavRailProps)
   }, [editor, blocks])
 
   const entries = useMemo(() => {
-    // Headings only — shapes + every H3 on arc42-style docs made the rail unreadable.
-    return buildCanvasOutline(outlineSource).filter((e) => e.kind === 'heading')
+    const raw = buildCanvasOutline(outlineSource).filter(
+      (e) => e.kind === 'heading' || e.kind === 'shape',
+    )
+    // Nest diagrams/tables under the most recent heading level.
+    let lastHeadingLevel = 1
+    return raw.map((entry) => {
+      if (entry.kind === 'heading') {
+        lastHeadingLevel = entry.level ?? 1
+        return entry
+      }
+      return {
+        ...entry,
+        level: Math.min(6, lastHeadingLevel + 1),
+      }
+    })
   }, [outlineSource])
 
   const [activeId, setActiveId] = useState<string | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const [previewTopPx, setPreviewTopPx] = useState<number | null>(null)
   const [expanded, setExpanded] = useState(false)
 
   // Track which heading is in view.
@@ -91,13 +105,6 @@ export function CanvasNavRail({ editor, blocks, scrollRef }: CanvasNavRailProps)
   if (entries.length === 0) return null
 
   const preview = hoveredId ? entries.find((e) => e.id === hoveredId) : null
-  const hoverIndex = hoveredId ? entries.findIndex((e) => e.id === hoveredId) : -1
-  const previewTop =
-    hoverIndex >= 0 && entries.length > 1
-      ? (hoverIndex / (entries.length - 1)) * 100
-      : hoverIndex === 0
-        ? 0
-        : 50
 
   return (
     <aside
@@ -107,40 +114,60 @@ export function CanvasNavRail({ editor, blocks, scrollRef }: CanvasNavRailProps)
       onMouseLeave={() => {
         setExpanded(false)
         setHoveredId(null)
+        setPreviewTopPx(null)
       }}
       onFocus={() => setExpanded(true)}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) {
           setExpanded(false)
           setHoveredId(null)
+          setPreviewTopPx(null)
         }
       }}
     >
       <div className="canvas-nav-rail-track" role="navigation">
-        {entries.map((entry, index) => {
+        {entries.map((entry) => {
           const active = entry.id === activeId
           const hovered = entry.id === hoveredId
-          // Even spacing when collapsed so dots never stack on top of each other.
-          const topPct =
-            entries.length === 1 ? 50 : (index / (entries.length - 1)) * 100
+
+          const markHover = (btn: HTMLButtonElement) => {
+            setHoveredId(entry.id)
+            const rail = btn.closest('.canvas-nav-rail')
+            if (!rail) return
+            const railRect = rail.getBoundingClientRect()
+            const btnRect = btn.getBoundingClientRect()
+            setPreviewTopPx(btnRect.top + btnRect.height / 2 - railRect.top)
+          }
 
           return (
             <button
               key={entry.id}
               type="button"
               data-nav-id={entry.id}
-              className={`canvas-nav-rib${active ? ' is-active' : ''}${hovered ? ' is-hovered' : ''}`}
-              style={expanded ? undefined : { top: `${topPct}%` }}
+              data-heading-level={entry.level ?? 1}
+              data-nav-kind={entry.kind}
+              data-nav-type={entry.type}
+              className={[
+                'canvas-nav-rib',
+                `canvas-nav-rib--h${entry.level ?? 1}`,
+                entry.kind === 'shape' ? `canvas-nav-rib--${entry.type}` : '',
+                active ? 'is-active' : '',
+                hovered ? 'is-hovered' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
               aria-label={`Jump to ${entry.label}`}
               aria-current={active ? 'true' : undefined}
               title={entry.label}
-              onMouseEnter={() => setHoveredId(entry.id)}
-              onFocus={() => setHoveredId(entry.id)}
+              onMouseEnter={(e) => markHover(e.currentTarget)}
+              onFocus={(e) => markHover(e.currentTarget)}
               onClick={() => jumpTo(entry.id)}
             >
               <span className="canvas-nav-rib-dot" />
               <span className="canvas-nav-rib-label">
-                <span className="canvas-nav-rib-badge">{outlineTypeBadge(entry.type)}</span>
+                <span className="canvas-nav-rib-badge">
+                  {outlineTypeBadge(entry.type, entry.level)}
+                </span>
                 <span className="canvas-nav-rib-text">{entry.label}</span>
               </span>
             </button>
@@ -149,8 +176,20 @@ export function CanvasNavRail({ editor, blocks, scrollRef }: CanvasNavRailProps)
       </div>
 
       {!expanded && preview ? (
-        <div className="canvas-nav-preview" role="tooltip" style={{ top: `${previewTop}%` }}>
-          <span className="canvas-nav-preview-badge">{outlineTypeBadge(preview.type)}</span>
+        <div
+          className={[
+            'canvas-nav-preview',
+            `canvas-nav-preview--h${preview.level ?? 1}`,
+            preview.kind === 'shape' ? `canvas-nav-preview--${preview.type}` : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          role="tooltip"
+          style={{ top: previewTopPx != null ? `${previewTopPx}px` : '50%' }}
+        >
+          <span className="canvas-nav-preview-badge">
+            {outlineTypeBadge(preview.type, preview.level)}
+          </span>
           <span className="canvas-nav-preview-text">{preview.label}</span>
         </div>
       ) : null}

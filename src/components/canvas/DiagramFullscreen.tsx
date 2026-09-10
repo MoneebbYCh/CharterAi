@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { MermaidRenderer } from './MermaidRenderer'
-import { BlockEditDialog } from './BlockEditDialog'
+import { MermaidEditorDialog } from './MermaidEditorDialog'
 
 interface DiagramFullscreenProps {
   open: boolean
@@ -26,15 +26,11 @@ export function DiagramFullscreen({
   const [dragging, setDragging] = useState(false)
   const dragOrigin = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null)
   const [editing, setEditing] = useState(false)
-  const [draftCode, setDraftCode] = useState(code)
-  const [draftTitle, setDraftTitle] = useState(title)
 
   useEffect(() => {
     if (!open) return
     setOffset({ x: 0, y: 0 })
     setScale(1)
-    setDraftCode(code)
-    setDraftTitle(title)
     setEditing(false)
   }, [open, code, title])
 
@@ -127,11 +123,7 @@ export function DiagramFullscreen({
           <button
             type="button"
             className="rg-block-action rg-block-action--accent"
-            onClick={() => {
-              setDraftCode(code)
-              setDraftTitle(title)
-              setEditing(true)
-            }}
+            onClick={() => setEditing(true)}
           >
             Edit
           </button>
@@ -160,36 +152,17 @@ export function DiagramFullscreen({
         <p className="rg-diagram-fs-hint">Drag to move · scroll to zoom · Esc to close</p>
       </div>
 
-      <BlockEditDialog
+      <MermaidEditorDialog
         open={editing}
-        title="Edit diagram"
-        wide
+        dialogTitle="Edit Mermaid diagram"
+        initialCode={code}
+        initialTitle={title}
         onClose={() => setEditing(false)}
-        onSave={() => {
-          onSave({ code: draftCode, title: draftTitle })
+        onSave={(next) => {
+          onSave(next)
           setEditing(false)
         }}
-      >
-        <label className="rg-edit-field">
-          <span>Title</span>
-          <input
-            type="text"
-            value={draftTitle}
-            onChange={(e) => setDraftTitle(e.target.value)}
-            placeholder="Diagram title"
-          />
-        </label>
-        <label className="rg-edit-field">
-          <span>Mermaid source</span>
-          <textarea
-            className="rg-edit-code"
-            value={draftCode}
-            onChange={(e) => setDraftCode(e.target.value)}
-            rows={14}
-            spellCheck={false}
-          />
-        </label>
-      </BlockEditDialog>
+      />
     </div>,
     document.body,
   )

@@ -1,13 +1,24 @@
 import { COLORS_DEFAULT, createStyleSpec } from '@blocknote/core'
 
+/** Brand-aligned palette — logo screen blue instead of BlockNote’s teal “blue”. */
+const CANVAS_COLORS = {
+  ...COLORS_DEFAULT,
+  blue: {
+    text: '#0001bb',
+    background: '#e0e0ff',
+  },
+} as const
+
 function resolveTextColor(value: string): string {
   if (!value || value === 'default') return ''
-  return value in COLORS_DEFAULT ? COLORS_DEFAULT[value].text : value
+  return value in CANVAS_COLORS ? CANVAS_COLORS[value as keyof typeof CANVAS_COLORS].text : value
 }
 
 function resolveBackgroundColor(value: string): string {
   if (!value || value === 'default') return ''
-  return value in COLORS_DEFAULT ? COLORS_DEFAULT[value].background : value
+  return value in CANVAS_COLORS
+    ? CANVAS_COLORS[value as keyof typeof CANVAS_COLORS].background
+    : value
 }
 
 /** Named + arbitrary CSS colors (hex/rgb) via inline style. */
@@ -136,7 +147,7 @@ export const FONT_SIZES = [
 
 export function colorSwatch(key: string, kind: 'text' | 'background'): string {
   if (key === 'default') return kind === 'text' ? '#1a1a22' : 'transparent'
-  const entry = COLORS_DEFAULT[key]
+  const entry = CANVAS_COLORS[key as keyof typeof CANVAS_COLORS]
   if (!entry) return kind === 'text' ? key : key
   return kind === 'text' ? entry.text : entry.background
 }

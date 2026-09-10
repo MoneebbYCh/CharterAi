@@ -29,13 +29,42 @@ function ensureMermaid(api: MermaidApi) {
   mermaidReady = true
 }
 
+/** Keep viewBox; drop fixed px size so CSS can scale the SVG with its box. */
+function makeSvgFluid(svgMarkup: string): string {
+  if (typeof DOMParser === 'undefined') return svgMarkup
+  try {
+    const doc = new DOMParser().parseFromString(svgMarkup, 'image/svg+xml')
+    const svg = doc.documentElement
+    if (!svg || svg.tagName.toLowerCase() !== 'svg') return svgMarkup
+    const attrW = Number.parseFloat(svg.getAttribute('width') || '')
+    const attrH = Number.parseFloat(svg.getAttribute('height') || '')
+    if (!svg.getAttribute('viewBox') && Number.isFinite(attrW) && Number.isFinite(attrH)) {
+      svg.setAttribute('viewBox', `0 0 ${attrW} ${attrH}`)
+    }
+    svg.removeAttribute('width')
+    svg.removeAttribute('height')
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+    return new XMLSerializer().serializeToString(svg)
+  } catch {
+    return svgMarkup
+  }
+}
+
+export type MermaidFit = 'width' | 'readable' | 'contain'
+
 interface MermaidRendererProps {
   code: string
   className?: string
+  /**
+   * `width` — classic max-width 100%.
+   * `readable` — fluid width.
+   * `contain` — fill parent box (grows/shrinks with resize frame).
+   */
+  fit?: MermaidFit
 }
 
 /** Renders Mermaid source to SVG. Shows parse/render errors inline. */
-export function MermaidRenderer({ code, className }: MermaidRendererProps) {
+export function MermaidRenderer({ code, className, fit = 'width' }: MermaidRendererProps) {
   const reactId = useId().replace(/:/g, '')
   const [svg, setSvg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -57,7 +86,7 @@ export function MermaidRenderer({ code, className }: MermaidRendererProps) {
         const id = `rg-mermaid-${reactId}-${Date.now()}`
         const { svg: rendered } = await api.render(id, source)
         if (!cancelled) {
-          setSvg(rendered)
+          setSvg(fit === 'width' ? rendered : makeSvgFluid(rendered))
           setError(null)
         }
       } catch (err) {
@@ -71,7 +100,7 @@ export function MermaidRenderer({ code, className }: MermaidRendererProps) {
     return () => {
       cancelled = true
     }
-  }, [code, reactId])
+  }, [code, reactId, fit])
 
   if (error) {
     return (
@@ -86,9 +115,16 @@ export function MermaidRenderer({ code, className }: MermaidRendererProps) {
     return <div className={`rg-diagram-loading ${className ?? ''}`}>Rendering diagram…</div>
   }
 
+  const fitClass =
+    fit === 'contain'
+      ? ' rg-diagram-svg--contain'
+      : fit === 'readable'
+        ? ' rg-diagram-svg--readable'
+        : ''
+
   return (
     <div
-      className={`rg-diagram-svg ${className ?? ''}`}
+      className={`rg-diagram-svg${fitClass} ${className ?? ''}`}
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   )

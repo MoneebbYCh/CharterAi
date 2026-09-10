@@ -2,17 +2,53 @@ import { useCallback, useEffect, useMemo, useState, type MouseEvent, type ReactN
 import { useActiveStyles, useSelectedBlocks } from '@blocknote/react'
 import {
   CANVAS_INSERT_ITEMS,
+  insertDiagram,
   type CanvasEditor,
 } from './canvasInsert'
 import { TableSizePicker } from './TableSizePicker'
 import { TableBorderControls } from './TableBorderControls'
 import type { TableBorderStyle } from './tableBorderStyle'
+import { DEFAULT_DIAGRAM_CODE } from './blocks/Diagram'
+import { MermaidEditorDialog } from './MermaidEditorDialog'
 import {
   FONT_FAMILIES,
   FONT_SIZES,
   TEXT_COLOR_KEYS,
   colorSwatch,
 } from './textStyles'
+
+/** Tiny flowchart glyph so the insert control reads as Mermaid at a glance. */
+function MermaidGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 40 32"
+      width="40"
+      height="32"
+      aria-hidden
+      focusable="false"
+    >
+      <rect x="1" y="1" width="14" height="9" rx="2" fill="#f4f4f5" stroke="#141418" strokeWidth="1.5" />
+      <rect x="25" y="1" width="14" height="9" rx="2" fill="#f4f4f5" stroke="#141418" strokeWidth="1.5" />
+      <rect x="13" y="21" width="14" height="9" rx="2" fill="#141418" stroke="#141418" strokeWidth="1.5" />
+      <path d="M8 10v5h12" fill="none" stroke="#141418" strokeWidth="1.5" />
+      <path d="M32 10v5H20" fill="none" stroke="#141418" strokeWidth="1.5" />
+      <path d="M20 15v6" fill="none" stroke="#141418" strokeWidth="1.5" />
+      <path d="M20 21l-2.4-2.8M20 21l2.4-2.8" fill="none" stroke="#141418" strokeWidth="1.4" />
+      <text
+        x="20"
+        y="27.2"
+        textAnchor="middle"
+        fill="#fff"
+        fontSize="5.5"
+        fontFamily="var(--font-label, system-ui)"
+        fontWeight="700"
+      >
+        m
+      </text>
+    </svg>
+  )
+}
 
 interface CanvasToolsSidebarProps {
   editor: CanvasEditor | null
@@ -78,6 +114,11 @@ function FormatPanel({ editor }: { editor: CanvasEditor }) {
 
   const alignment = useMemo((): Align => {
     const block = selectedBlocks[0]
+    if (block?.type === 'diagram') {
+      const value = (block.props as { align?: string } | undefined)?.align
+      if (value === 'left' || value === 'center' || value === 'right') return value
+      return 'center'
+    }
     const value = (block?.props as { textAlignment?: string } | undefined)?.textAlignment
     if (value === 'center' || value === 'right' || value === 'justify') return value
     return 'left'
@@ -163,6 +204,11 @@ function FormatPanel({ editor }: { editor: CanvasEditor }) {
   const setAlign = useCallback(
     (textAlignment: Align) => {
       for (const block of selectedBlocks) {
+        if (block.type === 'diagram') {
+          const align = textAlignment === 'justify' ? 'center' : textAlignment
+          editor.updateBlock(block, { props: { align } })
+          continue
+        }
         const props = block.props as Record<string, unknown> | undefined
         if (!props || !('textAlignment' in props)) continue
         editor.updateBlock(block, { props: { textAlignment } })
@@ -204,7 +250,6 @@ function FormatPanel({ editor }: { editor: CanvasEditor }) {
   return (
     <section className="canvas-tools-section">
       <h3 className="canvas-tools-section-title">Format</h3>
-      <p className="canvas-tools-section-hint">Select text in the page, then style it here.</p>
 
       <div className="canvas-fmt-group">
         <span className="canvas-fmt-label">Style</span>
@@ -434,8 +479,8 @@ export function CanvasToolsSidebar({
   tableBorder,
   onTableBorderChange,
 }: CanvasToolsSidebarProps) {
-  const shapes = CANVAS_INSERT_ITEMS.filter((i) => i.group === 'Shapes' && i.id !== 'table')
   const textItems = CANVAS_INSERT_ITEMS.filter((i) => i.group === 'Text')
+  const [mermaidOpen, setMermaidOpen] = useState(false)
 
   if (collapsed) {
     return (
@@ -471,6 +516,53 @@ export function CanvasToolsSidebar({
       </header>
 
       <div className="canvas-tools-body">
+        <section className="canvas-tools-section">
+          <h3 className="canvas-tools-section-title">Text</h3>
+          <div className="canvas-tools-grid canvas-tools-grid--compact">
+            {textItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="canvas-tools-insert canvas-tools-insert--compact"
+                disabled={!editor}
+                title={item.description}
+                onClick={() => editor && item.insert(editor)}
+              >
+                <span className="canvas-tools-insert-title">{item.title}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="canvas-tools-section">
+          <h3 className="canvas-tools-section-title">Diagram</h3>
+          <button
+            type="button"
+            className="canvas-tools-insert canvas-tools-mermaid-btn"
+            disabled={!editor}
+            onClick={() => setMermaidOpen(true)}
+          >
+            <MermaidGlyph className="canvas-tools-mermaid-glyph" />
+            <span className="canvas-tools-mermaid-copy">
+              <span className="canvas-tools-insert-title">Mermaid Diagram</span>
+              <span className="canvas-tools-insert-desc">flowchart · sequence · more</span>
+            </span>
+          </button>
+          <MermaidEditorDialog
+            open={mermaidOpen && !!editor}
+            dialogTitle="Insert Mermaid diagram"
+            initialCode={DEFAULT_DIAGRAM_CODE}
+            initialTitle="Diagram"
+            saveLabel="Insert"
+            onClose={() => setMermaidOpen(false)}
+            onSave={(next) => {
+              if (!editor) return
+              insertDiagram(editor, next)
+              setMermaidOpen(false)
+            }}
+          />
+        </section>
+
         {editor ? (
           <FormatPanel editor={editor} />
         ) : (
@@ -490,46 +582,6 @@ export function CanvasToolsSidebar({
             onChange={onTableBorderChange}
             disabled={!editor}
           />
-        </section>
-
-        <section className="canvas-tools-section">
-          <h3 className="canvas-tools-section-title">Diagram</h3>
-          <p className="canvas-tools-section-hint">
-            Insert at the cursor — same as typing <kbd>/</kbd> in the page.
-          </p>
-          <div className="canvas-tools-grid">
-            {shapes.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="canvas-tools-insert"
-                disabled={!editor}
-                title={item.description}
-                onClick={() => editor && item.insert(editor)}
-              >
-                <span className="canvas-tools-insert-title">{item.title}</span>
-                <span className="canvas-tools-insert-desc">{item.description}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="canvas-tools-section">
-          <h3 className="canvas-tools-section-title">Text</h3>
-          <div className="canvas-tools-grid canvas-tools-grid--compact">
-            {textItems.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="canvas-tools-insert canvas-tools-insert--compact"
-                disabled={!editor}
-                title={item.description}
-                onClick={() => editor && item.insert(editor)}
-              >
-                <span className="canvas-tools-insert-title">{item.title}</span>
-              </button>
-            ))}
-          </div>
         </section>
       </div>
     </aside>

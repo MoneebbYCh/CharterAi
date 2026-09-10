@@ -305,7 +305,10 @@ describe('DocumentWorker', () => {
     expect(call).toBe(4)
     expect(checkpoints).toHaveLength(2)
     expect(checkpoints[0].sections[0].blocks).toEqual([
-      expect.objectContaining({ type: 'callout', variant: 'warn', title: 'Section needs review' }),
+      expect.objectContaining({
+        type: 'markdown',
+        source: expect.stringContaining('Section needs review'),
+      }),
     ])
     expect(checkpoints[1].sections[1].blocks).toEqual([
       { type: 'markdown', source: 'valid runtime guidance' },
@@ -393,7 +396,7 @@ describe('DocumentWorker', () => {
     ])
   })
 
-  it('accepts valid kpiGrid and stakeholderTable blocks (rich shapes)', async () => {
+  it('coerces legacy kpiGrid and stakeholderTable parts into tables', async () => {
     const checkpoints: DocumentIR[] = []
     const provider: ModelProvider = {
       async *stream(request) {
@@ -418,12 +421,20 @@ describe('DocumentWorker', () => {
     await worker.run(node(), ctx().ctx)
     expect(checkpoints).toHaveLength(1)
     expect(checkpoints[0].sections[0].blocks).toEqual([
-      { type: 'kpiGrid', items: [{ metric: 'Uptime', target: '99.9%', method: 'SLA dashboards' }] },
-      { type: 'stakeholderTable', rows: [{ nameRole: 'Eng lead', interest: 'H', influence: 'M', concern: 'scope creep' }] },
+      {
+        type: 'table',
+        header: ['Metric', 'Target', 'Method'],
+        rows: [['Uptime', '99.9%', 'SLA dashboards']],
+      },
+      {
+        type: 'table',
+        header: ['Name / Role', 'Interest', 'Influence', 'Concern'],
+        rows: [['Eng lead', 'H', 'M', 'scope creep']],
+      },
     ])
   })
 
-  it('salvages a section when one block is invalid (keeps valid, coerces bad to callout)', async () => {
+  it('salvages a section when one block is invalid (keeps valid, coerces bad to Markdown)', async () => {
     const checkpoints: DocumentIR[] = []
     const provider: ModelProvider = {
       async *stream(request) {
@@ -450,7 +461,10 @@ describe('DocumentWorker', () => {
     const blocks = checkpoints[0].sections[0].blocks
     expect(blocks).toHaveLength(2)
     expect(blocks[0]).toEqual({ type: 'markdown', source: 'valid frontend note' })
-    expect(blocks[1]).toMatchObject({ type: 'callout', variant: 'warn', title: 'Unsupported content' })
+    expect(blocks[1]).toMatchObject({
+      type: 'markdown',
+      source: expect.stringContaining('Unsupported content'),
+    })
   })
 
   it('spells out the parts contract in section prompts', async () => {
@@ -470,6 +484,8 @@ describe('DocumentWorker', () => {
     expect(sectionPrompt).toContain('mermaid')
     expect(sectionPrompt).toContain('GFM tables')
     expect(sectionPrompt).toContain('blockquotes')
+    expect(sectionPrompt).toContain('Do not emit kpiGrid')
+    expect(sectionPrompt).not.toContain('Custom widgets')
   })
 
   it('parks the draft and stops when the user edited the document mid-generation', async () => {
@@ -641,7 +657,10 @@ describe('DocumentWorker', () => {
     expect(checkpoints).toHaveLength(1)
     expect(checkpoints[0].sections[0].blocks).toEqual([{ type: 'paragraph', text: 'keep me' }])
     expect(checkpoints[0].sections[1].blocks).toEqual([
-      expect.objectContaining({ type: 'callout', variant: 'warn', title: 'Section needs review' }),
+      expect.objectContaining({
+        type: 'markdown',
+        source: expect.stringContaining('Section needs review'),
+      }),
     ])
     expect(events.progress.at(-1)).toMatchObject({ status: 'completed', completed: 1, total: 2 })
     expect(result.completedSections).toBe(1)
@@ -805,7 +824,7 @@ describe('DocumentWorker', () => {
     ])
   })
 
-  it('downgrades a diagram that stays invalid after repair to an editable callout', async () => {
+  it('downgrades a diagram that stays invalid after repair to editable Markdown', async () => {
     const checkpoints: DocumentIR[] = []
     const telemetry: TaskTelemetryEvent[] = []
     let sectionCalls = 0
@@ -849,11 +868,13 @@ describe('DocumentWorker', () => {
     }))
     expect(checkpoints[0].sections[0].blocks).toEqual([
       {
-        type: 'callout',
-        variant: 'warn',
-        title: 'Diagram needs review',
-        text: 'flowchart INVALID',
+        type: 'markdown',
+        source: expect.stringContaining('Diagram needs review'),
       },
     ])
+    expect(checkpoints[0].sections[0].blocks[0]).toMatchObject({
+      type: 'markdown',
+      source: expect.stringContaining('flowchart INVALID'),
+    })
   })
 })

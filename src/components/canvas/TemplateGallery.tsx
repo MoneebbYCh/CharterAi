@@ -59,8 +59,8 @@ export function TemplateGallery({
             <div className="tmpl-blank">
               <p className="tmpl-section-title">Blank canvas</p>
               <p className="tmpl-blank-hint">
-                Start with an empty page and build it your way. Add sections and shapes from the
-                Insert tab or by typing <kbd>/</kbd> anywhere on the page.
+                Start with an empty page and build it your way. Add text, tables, and diagrams from the
+                tools sidebar or by typing <kbd>/</kbd> anywhere on the page.
               </p>
             </div>
           ) : (

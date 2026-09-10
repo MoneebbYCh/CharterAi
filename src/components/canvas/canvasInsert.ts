@@ -16,7 +16,8 @@ export interface CanvasInsertItem {
   id: string
   title: string
   description: string
-  group: 'Shapes' | 'Text'
+  /** Text inserts vs structured blocks (table / diagram). */
+  group: 'Blocks' | 'Text'
   aliases?: string[]
   insert: (editor: CanvasEditor) => void
 }
@@ -42,6 +43,20 @@ export function emptyTableBlock(rows: number, cols: number): Record<string, unkn
 
 export function insertTable(editor: CanvasEditor, rows: number, cols: number): void {
   insert(editor, emptyTableBlock(rows, cols))
+}
+
+export function insertDiagram(
+  editor: CanvasEditor,
+  opts: { code: string; title?: string } = { code: DEFAULT_DIAGRAM_CODE },
+): void {
+  insert(editor, {
+    type: 'diagram',
+    props: {
+      code: opts.code || DEFAULT_DIAGRAM_CODE,
+      title: opts.title ?? 'Diagram',
+      source: 'llm',
+    },
+  })
 }
 
 /** Shared catalog for slash menu + tools sidebar. */
@@ -98,30 +113,22 @@ export const CANVAS_INSERT_ITEMS: CanvasInsertItem[] = [
     id: 'table',
     title: 'Table',
     description: 'Inline-editable grid',
-    group: 'Shapes',
+    group: 'Blocks',
     aliases: ['table', 'grid'],
     insert: (editor) => insertTable(editor, 3, 3),
   },
   {
     id: 'diagram',
-    title: 'Diagram',
-    description: 'Mermaid flowchart',
-    group: 'Shapes',
+    title: 'Mermaid Diagram',
+    description: 'Flowchart with Mermaid',
+    group: 'Blocks',
     aliases: ['mermaid', 'flowchart', 'graph', 'diagram'],
-    insert: (editor) =>
-      insert(editor, {
-        type: 'diagram',
-        props: {
-          code: DEFAULT_DIAGRAM_CODE,
-          title: 'Diagram',
-          source: 'llm',
-        },
-      }),
+    insert: (editor) => insertDiagram(editor),
   },
 ]
 
 export function getCanvasSlashMenuItems(editor: CanvasEditor): DefaultReactSuggestionItem[] {
-  return CANVAS_INSERT_ITEMS.filter((item) => item.group === 'Shapes').map((item) => ({
+  return CANVAS_INSERT_ITEMS.filter((item) => item.group === 'Blocks').map((item) => ({
     title: item.title,
     subtext: item.description,
     aliases: item.aliases,

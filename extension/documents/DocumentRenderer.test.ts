@@ -36,84 +36,18 @@ describe('DocumentRenderer', () => {
     expect(canvas.blocks.filter((b) => b.type === 'bulletListItem')).toHaveLength(2)
   })
 
-  it('renders widgets as quote, bullets, table, or diagram', () => {
+  it('renders mermaid as diagram blocks', () => {
     const canvas = renderDocument(
       ir([
         {
-          heading: 'Risks',
-          blocks: [
-            {
-              type: 'risk',
-              rows: [{ risk: 'Late deps', likelihood: 'M', impact: 'H', mitigation: 'buffer' }],
-            },
-            { type: 'scope', inScope: ['a'], outOfScope: ['b'] },
-            { type: 'mermaid', diagram: 'flowchart TD\n  A --> B', title: 'Flow' },
-            { type: 'callout', text: 'Note', variant: 'warn', title: 'Heads up' },
-          ],
+          heading: 'Flow',
+          blocks: [{ type: 'mermaid', diagram: 'flowchart TD\n  A --> B', title: 'Flow' }],
         },
       ]),
     )
-    expect(canvas.blocks).toContainEqual({
-      type: 'table',
-      content: {
-        type: 'tableContent',
-        rows: [
-          { cells: ['Risk', 'Likelihood', 'Impact', 'Mitigation'] },
-          { cells: ['Late deps', 'M', 'H', 'buffer'] },
-        ],
-      },
-    })
-    expect(canvas.blocks).toContainEqual({ type: 'paragraph', content: '**In scope**' })
-    expect(canvas.blocks).toContainEqual({ type: 'bulletListItem', content: 'a' })
-    expect(canvas.blocks).toContainEqual({ type: 'paragraph', content: '**Out of scope**' })
-    expect(canvas.blocks).toContainEqual({ type: 'bulletListItem', content: 'b' })
     expect(canvas.blocks).toContainEqual({
       type: 'diagram',
       props: { code: 'flowchart TD\n  A --> B', title: 'Flow', source: 'llm' },
-    })
-    expect(canvas.blocks).toContainEqual({
-      type: 'quote',
-      content: '**Heads up:** Note',
-    })
-  })
-
-  it('renders kpiGrid and stakeholderTable as native tables', () => {
-    const canvas = renderDocument(
-      ir([
-        {
-          heading: 'Plan',
-          blocks: [
-            {
-              type: 'kpiGrid',
-              items: [{ metric: 'Uptime', target: '99.9%', method: 'SLA dashboards' }],
-            },
-            {
-              type: 'stakeholderTable',
-              rows: [{ nameRole: 'Eng lead', interest: 'H', influence: 'M', concern: 'scope creep' }],
-            },
-          ],
-        },
-      ]),
-    )
-    expect(canvas.blocks).toContainEqual({
-      type: 'table',
-      content: {
-        type: 'tableContent',
-        rows: [
-          { cells: ['Metric', 'Target', 'Method'] },
-          { cells: ['Uptime', '99.9%', 'SLA dashboards'] },
-        ],
-      },
-    })
-    expect(canvas.blocks).toContainEqual({
-      type: 'table',
-      content: {
-        type: 'tableContent',
-        rows: [
-          { cells: ['Name / Role', 'Interest', 'Influence', 'Concern'] },
-          { cells: ['Eng lead', 'H', 'M', 'scope creep'] },
-        ],
-      },
     })
   })
 
@@ -140,7 +74,7 @@ describe('DocumentRenderer', () => {
     expect(headings.every((h) => (h.props as { level?: number }).level !== 2 || h.content === 'Setup')).toBe(true)
   })
 
-  it('renders legacy table IR as native tableContent', () => {
+  it('renders table IR as native tableContent', () => {
     const canvas = renderDocument(
       ir([
         {
@@ -165,6 +99,12 @@ describe('DocumentRenderer', () => {
 
   it('schema accepts a full IR and rejects invalid block types', () => {
     expect(documentIrSchema.parse(ir([{ heading: 'x', blocks: [{ type: 'bullets', items: [] }] }]))).toBeTruthy()
+    expect(() =>
+      documentIrSchema.parse({
+        title: 'x',
+        sections: [{ heading: 'x', blocks: [{ type: 'kpiGrid', items: [] }] }],
+      }),
+    ).toThrow()
     expect(() =>
       documentIrSchema.parse({
         title: 'x',

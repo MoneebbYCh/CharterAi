@@ -14,7 +14,7 @@ import type { ModelProvider } from '../model/ModelProvider'
 import type { ModelInvocationContext } from '../model/ModelTypes'
 import type { TaskBudgetController, TaskTelemetryEvent } from '../observability/TaskControls'
 import { irBlockSchema, documentIrSchema, type DocumentIR, type IRBlock } from '../../documents/DocumentIR'
-import { sanitizeBlockList, sanitizePartsList } from '../../documents/blockSanitize'
+import { sanitizeBlock, sanitizeBlockList, sanitizePartsList } from '../../documents/blockSanitize'
 import { normalizeMarkdown } from '../../documents/markdownNormalize'
 import { createMermaidValidator } from '../../documents/mermaidValidate'
 import type { DocumentGateway } from './DocumentGateway'
@@ -90,7 +90,7 @@ const MAX_SECTIONS = 12
 /** Repair pass: corrected mermaid sources, one per failing diagram, in order. */
 const mermaidRepairSchema = z.object({ diagrams: z.array(z.string().max(10_000)) })
 
-/** Section payload: interleaved Markdown prose + typed custom widgets. */
+/** Section payload: Markdown prose + optional Mermaid diagrams. */
 const BLOCK_SCHEMA_HINT =
   '\n\nRespond with ONLY JSON: {"parts":[...]}.\n' +
   'Each part is EXACTLY one of:\n' +
@@ -99,15 +99,16 @@ const BLOCK_SCHEMA_HINT =
   '  fenced code, and **bold** / *italic* / [links](url).\n' +
   '  Do NOT invent {"type":"paragraph"} or {"type":"bullets"} or {"type":"table"}.\n' +
   '  Do not include a section title (the heading is already known). Use ### for subsections only.\n' +
-  '- Custom widgets (typed JSON only — Markdown cannot express these):\n' +
-  '  - mermaid: {"type":"mermaid","diagram":"flowchart TD\\n  A --> B","title":"..."}\n' +
-  '  - Prefer Markdown GFM tables for KPIs, risks, stakeholders, and scope lists.\n' +
-  '  - Prefer > blockquotes for caveats / "not established" notes.\n' +
+  '  Prefer GFM tables for KPIs, risks, stakeholders, and scope lists.\n' +
+  '  Prefer > blockquotes for caveats / "not established" notes.\n' +
+  '- Mermaid diagram only (typed JSON — Markdown cannot express these):\n' +
+  '  {"type":"mermaid","diagram":"flowchart TD\\n  A --> B","title":"..."}\n' +
   'Rules: a mermaid "diagram" must be a single-line string using \\n escapes (never raw newlines). ' +
   'Start it with a supported diagram type: flowchart (or graph TD/LR), sequenceDiagram, classDiagram, ' +
   'stateDiagram-v2, erDiagram, gantt, pie, journey, mindmap, timeline, quadrantChart, or gitGraph. ' +
   'Quote any node/edge label containing { } < > | # ; or /. ' +
-  'Prefer Markdown for ordinary prose/lists/tables. Use mermaid only for architecture or flow diagrams.'
+  'Prefer Markdown for ordinary prose/lists/tables. Use mermaid only for architecture or flow diagrams. ' +
+  'Do not emit kpiGrid, stakeholderTable, riskList, scopeBounds, or callout widgets — use Markdown instead.'
 
 
 type SectionParseOutcome = 'valid' | 'empty' | 'markdown' | 'malformed_json' | 'schema_mismatch'
@@ -179,8 +180,8 @@ function parseSectionText(text: string): SectionParseResult {
 }
 
 /**
- * Keep the blocks that validate; turn each invalid block into an editable warn
- * callout containing the raw model output (nothing is silently dropped). Returns
+ * Keep the blocks that validate; turn each invalid block into editable Markdown
+ * containing the raw model output (nothing is silently dropped). Returns
  * null when NO block was salvageable — the caller then retries.
  */
 function salvageBlocks(raw: unknown): IRBlock[] | null {
@@ -198,6 +199,12 @@ function salvageBlocks(raw: unknown): IRBlock[] | null {
   const salvaged: IRBlock[] = []
   let kept = 0
   for (const block of entries) {
+    const sanitized = sanitizeBlock(block)
+    if (sanitized) {
+      salvaged.push(sanitized)
+      kept++
+      continue
+    }
     const parsed = irBlockSchema.safeParse(block)
     if (parsed.success) {
       salvaged.push(parsed.data)
@@ -205,10 +212,8 @@ function salvageBlocks(raw: unknown): IRBlock[] | null {
     } else {
       const text = typeof block === 'string' ? block : JSON.stringify(block)
       salvaged.push({
-        type: 'callout',
-        variant: 'warn',
-        title: 'Unsupported content',
-        text: (text ?? '').slice(0, 2_000) || 'Empty block.',
+        type: 'markdown',
+        source: `> **Unsupported content:** ${(text ?? '').slice(0, 2_000) || 'Empty block.'}`,
       })
     }
   }
@@ -227,26 +232,10 @@ function blocksText(blocks: IRBlock[]): string {
         case 'bullets':
         case 'numbered':
           return b.items.map((i) => `- ${i}`).join('\n')
-        case 'callout':
-          return `${b.title ? `${b.title}: ` : ''}${b.text}`
         case 'table':
           return [b.header.join(' | '), ...b.rows.map((r) => r.join(' | '))].join('\n')
-        case 'risk':
-          return b.rows
-            .map((r) => `Risk: ${r.risk}${r.mitigation ? ` — Mitigation: ${r.mitigation}` : ''}`)
-            .join('\n')
-        case 'scope':
-          return `In scope: ${b.inScope.join(', ')}\nOut of scope: ${b.outOfScope.join(', ')}`
         case 'mermaid':
           return b.title ?? 'Diagram'
-        case 'kpiGrid':
-          return b.items
-            .map((i) => `KPI: ${i.metric}${i.target ? ` — target: ${i.target}` : ''}${i.method ? ` — method: ${i.method}` : ''}`)
-            .join('\n')
-        case 'stakeholderTable':
-          return b.rows
-            .map((r) => `${r.nameRole}${r.interest ? ` — interest: ${r.interest}` : ''}${r.influence ? ` — influence: ${r.influence}` : ''}${r.concern ? ` — concern: ${r.concern}` : ''}`)
-            .join('\n')
       }
     })
     .join('\n')
@@ -824,8 +813,7 @@ export class DocumentWorker {
 
   /**
    * A bad section response must not discard an otherwise valid document.
-   * This deliberately does not expose untrusted raw model output: it creates
-   * a valid, editable Canvas callout that the user can complete in place.
+   * Creates editable Markdown the user can complete in place — no raw model dump.
    */
   private invalidSectionFallback(
     ctx: DocumentRunContext,
@@ -847,10 +835,9 @@ export class DocumentWorker {
     })
     return [
       {
-        type: 'callout',
-        variant: 'warn',
-        title: 'Section needs review',
-        text: 'The AI could not produce this section in the required editable document format after two attempts. Add or regenerate the section content here.',
+        type: 'markdown',
+        source:
+          '> **Section needs review:** The AI could not produce this section in the required editable document format after two attempts. Add or regenerate the section content here.',
       },
     ]
   }
@@ -858,7 +845,7 @@ export class DocumentWorker {
   /**
    * Every model-emitted mermaid block is syntax-validated before checkpoint.
    * One bounded repair pass feeds the exact parse error back to the model;
-   * diagrams that still fail are downgraded to an editable warn callout —
+   * diagrams that still fail are downgraded to an editable Markdown note —
    * nothing is silently dropped (same philosophy as the section salvage).
    */
   private async ensureValidMermaid(
@@ -905,10 +892,8 @@ export class DocumentWorker {
           ok: false,
         })
         out[entry.index] = {
-          type: 'callout',
-          variant: 'warn',
-          title: 'Diagram needs review',
-          text: entry.diagram.slice(0, 2_000),
+          type: 'markdown',
+          source: `> **Diagram needs review:**\n>\n> \`\`\`mermaid\n${entry.diagram.slice(0, 1_800)}\n\`\`\``,
         }
       }
     }
@@ -948,7 +933,7 @@ export class DocumentWorker {
       return map.size > 0 ? map : null
     } catch {
       // Budget exhaustion or a provider failure must not kill the section —
-      // the invalid diagrams fall back to editable callouts below.
+      // the invalid diagrams fall back to editable Markdown notes below.
       return null
     }
   }

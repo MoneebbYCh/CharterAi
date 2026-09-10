@@ -1,14 +1,15 @@
-import { irBlockSchema, type CalloutVariant, type IRBlock } from './DocumentIR'
+import { irBlockSchema, type IRBlock } from './DocumentIR'
 import { sanitizeMermaidLabels } from '../../shared/mermaidSanitize'
 import { normalizeMarkdown } from './markdownNormalize'
 
 /**
  * Deterministic, LLM-tolerant block sanitation. The model is asked for a
- * precise JSON shape, but minor deviations (variant aliases, ragged table
- * rows, fence-wrapped diagrams, empty items, out-of-range enum casing) must
- * not wipe an otherwise valid block or document. Every block emitted by the
- * model passes through here before zod validation; hopeless shapes return
- * null and the caller's salvage path handles them.
+ * precise JSON shape, but minor deviations (ragged table rows, fence-wrapped
+ * diagrams, empty items) must not wipe an otherwise valid block. Hopeless
+ * shapes become editable Markdown review notes — never dropped.
+ *
+ * Legacy widget types (kpiGrid, callout, …) are coerced into tables /
+ * Markdown so older model output still lands as editable canvas content.
  */
 
 const FENCE = /^```(?:mermaid)?\s*([\s\S]*?)\s*```$/i
@@ -21,8 +22,6 @@ const LIMITS = {
   tableCell: 500,
   tableCols: 8,
   tableRows: 40,
-  calloutText: 2_000,
-  calloutTitle: 200,
   mermaidDiagram: 10_000,
   markdownSource: 12_000,
   blockTitle: 200,
@@ -37,6 +36,7 @@ const LIMITS = {
   stakeholderName: 200,
   stakeholderLevel: 20,
   stakeholderConcern: 500,
+  reviewNote: 2_000,
 }
 
 function string(raw: unknown): string | undefined {
@@ -65,21 +65,17 @@ function title(raw: unknown): string | undefined {
   return clean(raw, LIMITS.blockTitle)
 }
 
-/** Common LLM casing for callout variants, normalized to the four canonical ones. */
-function calloutVariant(raw: unknown): CalloutVariant | undefined {
-  const s = string(raw)?.trim().toLowerCase()
-  if (s === 'warning' || s === 'caution' || s === 'attention') return 'warn'
-  if (s === 'danger' || s === 'critical') return 'error'
-  if (s === 'note' || s === 'tip') return 'info'
-  if (s === 'ok' || s === 'good') return 'success'
-  return s === 'info' || s === 'warn' || s === 'success' || s === 'error' ? s : undefined
-}
-
-/** H|M|L normalization for risk / stakeholder levels ("High" → "H"). */
 function level(raw: unknown, max = LIMITS.riskLevel): string | undefined {
   const s = string(raw)?.trim().toLowerCase()
   if (!s) return undefined
-  const short = s === 'high' || s === 'h' ? 'H' : s === 'medium' || s === 'med' || s === 'm' ? 'M' : s === 'low' || s === 'l' ? 'L' : s.toUpperCase()
+  const short =
+    s === 'high' || s === 'h'
+      ? 'H'
+      : s === 'medium' || s === 'med' || s === 'm'
+        ? 'M'
+        : s === 'low' || s === 'l'
+          ? 'L'
+          : s.toUpperCase()
   return short.slice(0, max)
 }
 
@@ -92,6 +88,11 @@ function mermaidCode(raw: unknown): string | undefined {
   return code ? code.slice(0, LIMITS.mermaidDiagram) : undefined
 }
 
+function reviewMarkdown(titleText: string, body: string): IRBlock {
+  const source = `> **${titleText}:** ${body}`.slice(0, LIMITS.markdownSource)
+  return { type: 'markdown', source }
+}
+
 interface Dict {
   [key: string]: unknown
 }
@@ -100,17 +101,26 @@ function asDict(raw: unknown): Dict | undefined {
   return raw !== null && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Dict) : undefined
 }
 
+function makeTable(header: string[], rows: string[][]): IRBlock | null {
+  if (header.length === 0 || rows.length === 0) return null
+  const cappedHeader = header.slice(0, LIMITS.tableCols)
+  const cappedRows = rows.slice(0, LIMITS.tableRows).map((row) => {
+    const cells = row.map((c) => c.slice(0, LIMITS.tableCell)).slice(0, cappedHeader.length)
+    while (cells.length < cappedHeader.length) cells.push('')
+    return cells
+  })
+  return { type: 'table', header: cappedHeader, rows: cappedRows }
+}
+
 /**
  * Sanitizes one raw model-emitted block into a valid IRBlock, or null when the
- * shape is unrecoverable (the caller's salvage/fallback then applies). Coerces
- * common deviations; strings are trimmed and bounded to the IR schema limits.
+ * shape is unrecoverable (the caller's salvage/fallback then applies).
  */
 export function sanitizeBlock(raw: unknown): IRBlock | null {
   const dict = asDict(raw)
   if (!dict) return null
   const sanitized = sanitizeByType(dict.type, dict)
   if (!sanitized) return null
-  // Final shape guard: the sanitized block must satisfy the IR schema.
   const parsed = irBlockSchema.safeParse(sanitized)
   return parsed.success ? parsed.data : null
 }
@@ -135,12 +145,6 @@ function sanitizeByType(type: unknown, d: Dict): IRBlock | null {
       const normalized = normalizeMarkdown(source)
       return normalized ? { type: 'markdown', source: normalized.slice(0, LIMITS.markdownSource) } : null
     }
-    case 'callout': {
-      const text = clean(d.text, LIMITS.calloutText)
-      if (text === undefined) return null
-      const variant = calloutVariant(d.variant)
-      return { type: 'callout', text, ...(variant ? { variant } : {}), ...(title(d.title) ? { title: title(d.title) } : {}) }
-    }
     case 'mermaid': {
       const diagram = mermaidCode(d.diagram)
       if (diagram === undefined) return null
@@ -159,7 +163,6 @@ function sanitizeByType(type: unknown, d: Dict): IRBlock | null {
         const cells = rawRow
           .map((c) => clean(c, LIMITS.tableCell) ?? '')
           .slice(0, LIMITS.tableCols)
-        // Rectangular: pad short rows, drop cells beyond the header width.
         while (cells.length < header.length) cells.push('')
         cells.length = header.length
         if (cells.every((c) => c === '')) continue
@@ -168,75 +171,87 @@ function sanitizeByType(type: unknown, d: Dict): IRBlock | null {
       }
       return rows.length > 0 ? { type: 'table', header, rows } : null
     }
-    case 'risk': {
-      if (!Array.isArray(d.rows)) return null
-      const rows: IRBlock & { rows: Array<{ risk: string; likelihood?: string; impact?: string; mitigation?: string }> } = { type: 'risk', rows: [] }
-      for (const rawRow of d.rows) {
-        const row = asDict(rawRow)
-        const risk = clean(row?.risk, LIMITS.riskText)
-        if (risk === undefined) continue
-        const likelihood = level(row?.likelihood)
-        const impact = level(row?.impact)
-        const mitigation = clean(row?.mitigation, LIMITS.riskMitigation)
-        rows.rows.push({
-          risk,
-          ...(likelihood ? { likelihood } : {}),
-          ...(impact ? { impact } : {}),
-          ...(mitigation ? { mitigation } : {}),
-        })
-        if (rows.rows.length >= LIMITS.rowsMax) break
-      }
-      return rows.rows.length > 0 ? rows : null
-    }
-    case 'scope': {
-      const inScope = cleanList(d.inScope, LIMITS.scopeItem, LIMITS.scopeMax)
-      const outOfScope = cleanList(d.outOfScope, LIMITS.scopeItem, LIMITS.scopeMax)
-      return inScope.length > 0 || outOfScope.length > 0 ? { type: 'scope', inScope, outOfScope } : null
+    // Legacy widgets → tables / Markdown (no longer first-class IR types).
+    case 'callout': {
+      const text = clean(d.text, LIMITS.reviewNote)
+      if (text === undefined) return null
+      const heading = title(d.title)
+      return reviewMarkdown(heading ?? 'Note', text)
     }
     case 'kpiGrid': {
       if (!Array.isArray(d.items)) return null
-      const items: Array<{ metric: string; target?: string; method?: string }> = []
+      const rows: string[][] = []
       for (const rawItem of d.items) {
         const item = asDict(rawItem)
         const metric = clean(item?.metric, LIMITS.kpiMetric)
         if (metric === undefined) continue
-        const target = clean(item?.target, LIMITS.kpiMetric)
-        const method = clean(item?.method, LIMITS.kpiMetric)
-        items.push({
+        rows.push([
           metric,
-          ...(target ? { target } : {}),
-          ...(method ? { method } : {}),
-        })
-        if (items.length >= LIMITS.kpiMax) break
+          clean(item?.target, LIMITS.kpiMetric) ?? '',
+          clean(item?.method, LIMITS.kpiMetric) ?? '',
+        ])
+        if (rows.length >= LIMITS.kpiMax) break
       }
-      return items.length > 0 ? { type: 'kpiGrid', items } : null
+      return makeTable(['Metric', 'Target', 'Method'], rows)
     }
     case 'stakeholderTable': {
       if (!Array.isArray(d.rows)) return null
-      const rows: Array<{ nameRole: string; interest?: string; influence?: string; concern?: string }> = []
+      const rows: string[][] = []
       for (const rawRow of d.rows) {
         const row = asDict(rawRow)
         const nameRole = clean(row?.nameRole, LIMITS.stakeholderName)
         if (nameRole === undefined) continue
-        const interest = level(row?.interest, LIMITS.stakeholderLevel)
-        const influence = level(row?.influence, LIMITS.stakeholderLevel)
-        const concern = clean(row?.concern, LIMITS.stakeholderConcern)
-        rows.push({
+        rows.push([
           nameRole,
-          ...(interest ? { interest } : {}),
-          ...(influence ? { influence } : {}),
-          ...(concern ? { concern } : {}),
-        })
+          level(row?.interest, LIMITS.stakeholderLevel) ?? '',
+          level(row?.influence, LIMITS.stakeholderLevel) ?? '',
+          clean(row?.concern, LIMITS.stakeholderConcern) ?? '',
+        ])
         if (rows.length >= LIMITS.rowsMax) break
       }
-      return rows.length > 0 ? { type: 'stakeholderTable', rows } : null
+      return makeTable(['Name / Role', 'Interest', 'Influence', 'Concern'], rows)
+    }
+    case 'risk':
+    case 'riskList': {
+      if (!Array.isArray(d.rows) && !Array.isArray(d.items)) return null
+      const source = Array.isArray(d.rows) ? d.rows : d.items
+      const rows: string[][] = []
+      for (const rawRow of source!) {
+        const row = asDict(rawRow)
+        const risk = clean(row?.risk ?? row?.text, LIMITS.riskText)
+        if (risk === undefined) continue
+        rows.push([
+          risk,
+          level(row?.likelihood) ?? '',
+          level(row?.impact) ?? '',
+          clean(row?.mitigation, LIMITS.riskMitigation) ?? '',
+        ])
+        if (rows.length >= LIMITS.rowsMax) break
+      }
+      return makeTable(['Risk', 'Likelihood', 'Impact', 'Mitigation'], rows)
+    }
+    case 'scope':
+    case 'scopeBounds': {
+      const inScope = cleanList(d.inScope, LIMITS.scopeItem, LIMITS.scopeMax)
+      const outOfScope = cleanList(d.outOfScope, LIMITS.scopeItem, LIMITS.scopeMax)
+      if (inScope.length === 0 && outOfScope.length === 0) return null
+      const lines: string[] = []
+      if (inScope.length) {
+        lines.push('**In scope**', ...inScope.map((i) => `- ${i}`))
+      }
+      if (outOfScope.length) {
+        if (lines.length) lines.push('')
+        lines.push('**Out of scope**', ...outOfScope.map((i) => `- ${i}`))
+      }
+      const source = normalizeMarkdown(lines.join('\n'))
+      return source ? { type: 'markdown', source: source.slice(0, LIMITS.markdownSource) } : null
     }
     default:
       return null
   }
 }
 
-/** Sanitizes a raw `{"blocks":[...]}` payload; hopeless blocks become editable warn callouts (never dropped). */
+/** Sanitizes a raw `{"blocks":[...]}` payload; hopeless blocks become Markdown review notes. */
 export function sanitizeBlockList(raw: unknown): { blocks: IRBlock[]; coerced: number } | null {
   const dict = asDict(raw)
   if (!dict || !Array.isArray(dict.blocks)) return null
@@ -245,7 +260,7 @@ export function sanitizeBlockList(raw: unknown): { blocks: IRBlock[]; coerced: n
 
 /**
  * Sanitizes a `{"parts":[...]}` section payload: each part is either
- * `{"md":"..."}` (prose Markdown → IR markdown) or a typed widget block.
+ * `{"md":"..."}` (prose Markdown → IR markdown) or a typed block (mermaid / table / …).
  */
 export function sanitizePartsList(raw: unknown): { blocks: IRBlock[]; coerced: number } | null {
   const dict = asDict(raw)
@@ -274,15 +289,8 @@ function sanitizeEntries(entries: unknown[]): { blocks: IRBlock[]; coerced: numb
     if (block) {
       blocks.push(block)
     } else {
-      // Same salvage philosophy as the worker's section fallback: nothing is
-      // silently dropped — unparseable output becomes an editable callout.
       const text = typeof entry === 'string' ? entry : safeJson(entry)
-      blocks.push({
-        type: 'callout',
-        variant: 'warn',
-        title: 'Unsupported content',
-        text: (text ?? '').slice(0, 2_000) || 'Empty block.',
-      })
+      blocks.push(reviewMarkdown('Unsupported content', (text ?? '').slice(0, LIMITS.reviewNote) || 'Empty block.'))
       coerced++
     }
     if (blocks.length >= 60) break
