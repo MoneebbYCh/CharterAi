@@ -8,6 +8,11 @@ import { TaskGraphStore } from '../planner/TaskGraphStore'
 import type { Scheduler } from '../workers/Scheduler'
 import { ProviderError, isRetryableProviderError } from '../model/ProviderError'
 import { AdaptiveConcurrencyController, TaskBudgetController } from '../observability/TaskControls'
+import {
+  countObservedFindingsWithEvidence,
+  parseRequiredEvidenceMinObserved,
+  MIN_OBSERVED_FINDINGS,
+} from '../knowledge/KnowledgePromptBuilder'
 
 /**
  * Shared task-graph execution (plan §8/§9/§12/§13/§14): seed a durable plan
@@ -55,6 +60,8 @@ export interface NodeRunContext {
     finalStatus?: 'completed' | 'failed'
   }) => void
   budgetController?: TaskBudgetController
+  /** Gap messages for document workers when knowledge readiness is low. */
+  extraKnowledgeGaps?: string[]
 }
 
 /** Task-scoped emit surface used by graph execution. */
@@ -102,6 +109,8 @@ export interface RunTaskGraphOptions {
   resume?: { graph?: TaskNode[] }
   /** Per-model pricing for cost estimation. */
   pricing?: import('../observability/TaskControls').ModelPricing
+  /** Observed-finding count for document readiness checks. */
+  countObservedFindings?: () => number
   emit: RunTaskGraphEmit
 }
 
@@ -224,6 +233,19 @@ export async function runTaskGraph(options: RunTaskGraphOptions): Promise<RunTas
       return []
     }
     const deps = node.dependencies.flatMap((d) => outputs.get(d) ?? [])
+    let extraKnowledgeGaps: string[] | undefined
+    if (node.roleSpec.workerType === 'document') {
+      const minObserved =
+        parseRequiredEvidenceMinObserved(node.requiredEvidence) ?? MIN_OBSERVED_FINDINGS
+      const observed = options.countObservedFindings?.() ?? countObservedFindingsWithEvidence([])
+      if (observed < minObserved) {
+        const gap =
+          `Limited repository evidence (${observed}/${minObserved} observed findings with evidence) — ` +
+          'document will mark unknowns explicitly.'
+        emit.activity(gap)
+        extraKnowledgeGaps = [gap]
+      }
+    }
     let raw: NodeRunResult | string[] | undefined
     for (let attempt = 0; ; attempt++) {
       try {
@@ -234,6 +256,7 @@ export async function runTaskGraph(options: RunTaskGraphOptions): Promise<RunTas
             activity: (a) => emit.activity(a),
             delta: () => {},
             dependencyOutputs: deps,
+            extraKnowledgeGaps,
             documentDeclared: (document) => emit.documentDeclared(document),
             documentProgress: (document) => emit.documentProgress(document),
             documentCheckpoint: (info) => emit.documentCheckpoint(info),
@@ -348,6 +371,11 @@ export async function runTaskGraph(options: RunTaskGraphOptions): Promise<RunTas
     }
 
     await options.onNodeDurable?.()
+
+    if (extraKnowledgeGaps && extraKnowledgeGaps.length > 0) {
+      finalOutputs.push(JSON.stringify({ kind: 'knowledgeGaps', items: extraKnowledgeGaps }))
+      outputs.set(node.id, finalOutputs)
+    }
 
     return finalOutputs
   }

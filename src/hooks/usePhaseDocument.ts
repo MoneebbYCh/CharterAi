@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  documentHasContent,
   emptyCanvasDocument,
   toCanvasDocument,
   type CanvasDocument,
@@ -8,6 +9,7 @@ import {
 import { getDocumentType } from '../data/documentTypes'
 import { getVscodeApi } from '../utils/vscodeApi'
 import { storageKeyFor, hasWorkspaceScope } from '../utils/workspaceScope'
+import { peekCanvasPush } from '../utils/canvasPushCache'
 
 const vscode = getVscodeApi()
 
@@ -83,6 +85,9 @@ export function usePhaseDocument(
       localStorage.setItem(storageKey, JSON.stringify(next))
       if (vscode) {
         if (saveBlockedRef.current && !force) return
+        // BlockNote can emit an initial onChange for the empty placeholder — never
+        // bump host revision before real user/agent content exists (that parks checkpoints).
+        if (!force && !documentHasContent(next) && revisionRef.current <= 1) return
         if (
           hasPendingSaveForVersion(
             pendingSaveVersionsRef.current,
@@ -116,13 +121,38 @@ export function usePhaseDocument(
   }, [doc, isDirty, persist])
 
   const setBlocks = useCallback((blocks: BlockNoteBlock[]) => {
-    editVersionRef.current += 1
     const next: CanvasDocument = {
       version: 1,
       kind: 'blocknote',
       blocks,
       anchors: docRef.current.anchors ?? {},
     }
+    // BlockNote fires an initial onChange for the empty placeholder — never treat
+    // that as a user edit or it blocks agent checkpoint pushes.
+    if (!documentHasContent(next) && revisionRef.current <= 1) return
+    // A failed editor remount can emit empty onChange — never wipe displayed content.
+    if (!documentHasContent(next) && documentHasContent(docRef.current)) return
+    editVersionRef.current += 1
+    docRef.current = next
+    dirtyRef.current = true
+    setDoc(next)
+    setIsDirty(true)
+  }, [])
+
+  const patchAnchors = useCallback((patch: Record<string, string | undefined>) => {
+    const prev = docRef.current
+    const anchors = { ...(prev.anchors ?? {}) }
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined) delete anchors[key]
+      else anchors[key] = value
+    }
+    const next: CanvasDocument = {
+      version: 1,
+      kind: 'blocknote',
+      blocks: prev.blocks,
+      anchors,
+    }
+    editVersionRef.current += 1
     docRef.current = next
     dirtyRef.current = true
     setDoc(next)
@@ -174,39 +204,59 @@ export function usePhaseDocument(
 
   useEffect(() => {
     if (!vscode) return
-    const handler = (event: MessageEvent) => {
-      const msg = event.data
-      if (msg.type === 'loadCanvas' && msg.phase === phaseId) {
-        if (typeof msg.revision === 'number') {
-          revisionRef.current = msg.revision
+
+    const applyPush = (data: unknown, revision?: number) => {
+      const incoming = data ? toCanvasDocument(data) : emptyCanvasDocument()
+      const current = docRef.current
+      const incomingHasContent = documentHasContent(incoming)
+      const currentHasContent = documentHasContent(current)
+
+      // A stale empty disk response must not wipe agent checkpoint content.
+      if (!incomingHasContent && currentHasContent) {
+        if (typeof revision === 'number') {
+          revisionRef.current = Math.max(revisionRef.current, revision)
         }
-        if (!loadedOnceRef.current) {
-          loadedOnceRef.current = true
-          // N2: the user typed before the disk read returned — keep their edits,
-          // never clobber them with the (already stale) disk version.
-          if (dirtyRef.current) {
-            setReady(true)
-            return
-          }
-        } else if (dirtyRef.current) {
-          // N7: preserve both sides of a conflict. Keep the user's local
-          // document visible and dirty, but require an explicit Save Draft
-          // before overwriting the newer host revision.
-          saveBlockedRef.current = true
-          onReplacedRef.current?.(
-            'The document was updated externally — your unsaved edits were kept. Review them, then choose Save Draft to overwrite the external version.',
-          )
+        setReady(true)
+        return
+      }
+      // Never apply a stale host snapshot over a newer checkpoint.
+      if (
+        typeof revision === 'number' &&
+        revision < revisionRef.current &&
+        currentHasContent
+      ) {
+        setReady(true)
+        return
+      }
+
+      if (typeof revision === 'number') revisionRef.current = revision
+      if (!loadedOnceRef.current) {
+        loadedOnceRef.current = true
+        if (dirtyRef.current && currentHasContent) {
           setReady(true)
           return
         }
-        // null/empty from disk must clear the workspace-scoped cache — never keep
-        // another folder's draft that happened to share a bare localStorage key.
-        if (msg.data) {
-          applyExternalDocument(toCanvasDocument(msg.data))
-        } else {
-          applyExternalDocument(emptyCanvasDocument())
-        }
+      } else if (dirtyRef.current && currentHasContent) {
+        saveBlockedRef.current = true
+        onReplacedRef.current?.(
+          'The document was updated externally — your unsaved edits were kept. Review them, then choose Save Draft to overwrite the external version.',
+        )
         setReady(true)
+        return
+      }
+      if (incomingHasContent || !currentHasContent) {
+        applyExternalDocument(incoming)
+      }
+      setReady(true)
+    }
+
+    const cached = peekCanvasPush(phaseId)
+    if (cached) applyPush(cached.data, cached.revision)
+
+    const handler = (event: MessageEvent) => {
+      const msg = event.data
+      if (msg.type === 'loadCanvas' && msg.phase === phaseId) {
+        applyPush(msg.data, msg.revision)
       } else if (msg.type === 'saveCanvasAck' && msg.phase === phaseId) {
         if (typeof msg.seq !== 'number') return
         const savedEditVersion = pendingSaveVersionsRef.current.get(msg.seq)
@@ -245,6 +295,7 @@ export function usePhaseDocument(
     doc,
     blocks: doc.blocks,
     setBlocks,
+    patchAnchors,
     applyExternalDocument,
     reset,
     saveNow,

@@ -170,6 +170,21 @@ describe('AnalysisWorker', () => {
     expect(JSON.parse(result.outputs[0])).toMatchObject({ role: 'Security Analyst' })
   })
 
+  it('enriches omitted evidenceIds from loop reads when claim overlaps excerpt', async () => {
+    const { worker, findings, ctx } = setup({
+      provider: provider({
+        text: () =>
+          `Analysis.\n\`\`\`json\n${JSON.stringify({
+            ...JSON_OUTPUT,
+            findings: [{ claim: 'login function in src/auth.ts', type: 'observed', evidenceIds: [] }],
+          })}\n\`\`\``,
+      }),
+    })
+    const result = await worker.run(node(), ctx)
+    expect(result.evidenceIds.length).toBeGreaterThan(0)
+    expect(findings.all().some((f) => f.evidenceIds.length > 0)).toBe(true)
+  })
+
   it('downgrades an observed claim to inferred when no evidence was read (invariant 3)', async () => {
     const { worker, findings, ctx } = setup({
       provider: directAnswerProvider(
@@ -209,6 +224,16 @@ describe('AnalysisWorker', () => {
     const result = await worker.run(node(), ctx)
     expect(result.findings).toHaveLength(0)
     expect(result.outputs[0]).toContain('findings')
+  })
+
+  it('commits observed findings from tool reads when model output omits citations', async () => {
+    const { worker, findings, evidence, ctx } = setup({
+      provider: provider({ text: 'summary without json block' }),
+    })
+    const result = await worker.run(node(), ctx)
+    expect(result.evidenceIds.length).toBeGreaterThan(0)
+    expect(findings.all().some((f) => f.type === 'observed' && f.evidenceIds.length > 0)).toBe(true)
+    expect(evidence.all().length).toBeGreaterThan(0)
   })
 
   it('narrows tools to the WorkerSpec.allowedTools list', async () => {

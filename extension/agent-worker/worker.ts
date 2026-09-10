@@ -37,6 +37,7 @@ import {
 } from '../agent/runtime/workerProtocol'
 import { resolveFeatureFlags, type AgentFeatureFlags } from '../agent/rollout/FeatureFlags'
 import { ComplexityRouter } from '../agent/planner/ComplexityRouter'
+import { countObservedFindingsWithEvidence } from '../agent/knowledge/KnowledgePromptBuilder'
 import type { OperationalDiagnostic } from '../agent/observability/OperationalLogger'
 import type { TaskTelemetryEvent } from '../agent/observability/TaskControls'
 import type { ModelPricing } from '../agent/observability/TaskControls'
@@ -84,7 +85,8 @@ function emitDiagnostic(diagnostic: OperationalDiagnostic): void {
 function telemetryDiagnostic(event: TaskTelemetryEvent): void {
   const level = event.kind === 'budget' || event.ok === false ? 'warn' : 'debug'
   emitDiagnostic({
-    event: `${event.kind}.completed`, level, taskId: event.taskId, nodeId: event.nodeId,
+    event: event.kind === 'budget' ? 'budget.exhausted' : `${event.kind}.completed`,
+    level, taskId: event.taskId, nodeId: event.nodeId,
     workerType: toWorkerType(event.workerType), tool: event.tool, model: event.model,
     durationMs: event.durationMs, inputTokens: event.inputTokens, outputTokens: event.outputTokens,
     concurrency: event.concurrency, ok: event.ok,
@@ -93,7 +95,7 @@ function telemetryDiagnostic(event: TaskTelemetryEvent): void {
     responseBytes: event.responseBytes, jsonExtracted: event.jsonExtracted, blockCount: event.blockCount,
     schemaIssueCount: event.schemaIssueCount, schemaIssueCodes: event.schemaIssueCodes,
     fallbackReason: event.fallbackReason, checkpointPending: event.checkpointPending,
-    errorKind: event.kind === 'budget' ? 'configuration' : event.ok === false ? 'provider' : undefined,
+    errorKind: event.ok === false ? 'provider' : undefined,
   })
 }
 
@@ -392,6 +394,7 @@ const documentWorker = new DocumentWorker({
   baseConfig: { ...loopConfig, thinking: 'enabled' },
   findings: knowledge.findings,
   facts: knowledge.facts,
+  evidence,
   gateway: createDocumentGateway(),
   // Plan §14: every checkpointed IR survives a restart (regeneration base).
   onCheckpoint: (documentId, ir) => recorder.onDocumentCheckpoint(documentId, ir),
@@ -445,6 +448,8 @@ const onGraphChange = (nodes: TaskNode[]) => {
 // outputs have reached the host's atomic state store.
 const onNodeDurable = () => recorder.flushAsync()
 
+const countObservedFindings = () => countObservedFindingsWithEvidence(knowledge.findings.all())
+
 const runtime = new AgentRuntime(
   featureFlags.singleLoop
     ? singleLoopRunner({
@@ -465,6 +470,7 @@ const runtime = new AgentRuntime(
       runNode,
       onGraphChange,
       onNodeDurable,
+      countObservedFindings,
       onLoopCheckpoint: (taskId, state) => recorder.onLoopCheckpoint(taskId, state),
     })
     : orchestratorRunner({
@@ -492,6 +498,7 @@ const runtime = new AgentRuntime(
       onNodeDurable,
       synthesize: synthesizeFinalAnswer,
       pricing: init.pricing,
+      countObservedFindings,
       runNode,
     }),
 )

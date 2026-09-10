@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { Planner } from './Planner'
 import type { ModelProvider } from '../model/ModelProvider'
+import { validateTaskGraph } from '../contracts/TaskGraph'
 
 describe('Planner', () => {
   it('produces coverage-area nodes for a security request', () => {
     const nodes = new Planner().plan('Audit the security of this repository.')
     expect(nodes.length).toBeGreaterThanOrEqual(3)
     expect(nodes.every((n) => n.status === 'queued')).toBe(true)
-    expect(nodes.map((n) => n.title)).toContain('Authentication entry points')
+    expect(nodes.map((n) => n.title)).toContain('Authentication mechanisms and entry points')
     expect(nodes.map((n) => n.title)).toContain('Secrets and credential handling')
     // Distinct ids, no dependencies in the initial graph (acyclic by construction).
     expect(new Set(nodes.map((n) => n.id)).size).toBe(nodes.length)
@@ -16,8 +17,8 @@ describe('Planner', () => {
 
   it('uses the architecture playbook for architecture requests', () => {
     const nodes = new Planner().plan('Analyze the complete architecture of this codebase.')
-    expect(nodes.map((n) => n.title)).toContain('System boundaries and modules')
-    expect(nodes.map((n) => n.title)).toContain('Data flow and persistence')
+    expect(nodes.map((n) => n.title)).toContain('System boundaries and module decomposition')
+    expect(nodes.map((n) => n.title)).toContain('Data flow and persistence model')
   })
 
   it('falls back to generic coverage areas when no playbook matches', () => {
@@ -38,17 +39,22 @@ describe('Planner', () => {
     expect(node.requiredCoverage).toContain(node.title)
   })
 
-  it('plans document requests: analysis first, document nodes depend on them (plan §12)', () => {
+  it('plans document requests: repository survey, analysis, then documents (plan §12)', () => {
     const nodes = new Planner({ maxNodes: 40 }).plan('Generate ten project documents for this repository.')
+    const survey = nodes.filter((n) => n.roleSpec.workerType === 'repository')
     const documents = nodes.filter((n) => n.roleSpec.workerType === 'document')
     const analysis = nodes.filter((n) => n.roleSpec.workerType === 'analysis')
 
+    expect(survey).toHaveLength(1)
+    expect(survey[0].title).toContain('Repository structure survey')
     expect(documents).toHaveLength(10)
     expect(analysis.length).toBeGreaterThan(0)
+    expect(analysis.every((a) => a.dependencies.includes(survey[0].id))).toBe(true)
     // Document production is parallelized; repository truth is analyzed once.
     expect(documents.every((d) => analysis.every((a) => d.dependencies.includes(a.id)))).toBe(true)
     // Document workers consume the fact base — no repository tools.
     expect(documents.every((d) => d.roleSpec.allowedTools.length === 0)).toBe(true)
+    expect(documents.every((d) => d.requiredEvidence.includes('min_observed_findings:3'))).toBe(true)
     // A document needs an outline plus bounded per-section generation calls.
     expect(documents.every((d) => d.budget.maxModelCalls >= 25)).toBe(true)
     // Distinct ids (acyclic by construction).
@@ -140,6 +146,22 @@ describe('Planner', () => {
     expect(nodes.some((node) => node.roleSpec.workerType === 'document')).toBe(true)
   })
 
+  it('plans a document graph for a continuation objective that references an earlier document request', () => {
+    const contextual = [
+      'Continue the following conversation while preserving its requested deliverable:',
+      'USER: Create a scalability design document for this repository.',
+      'ASSISTANT: I can create that editable document now. Shall I continue?',
+      'USER FOLLOW-UP: yes',
+    ].join('\n')
+    const nodes = new Planner().plan(contextual)
+    expect(nodes.some((n) => n.roleSpec.workerType === 'repository')).toBe(true)
+    expect(nodes.some((n) => n.roleSpec.workerType === 'document')).toBe(true)
+    expect(() => validateTaskGraph(nodes)).not.toThrow()
+    const survey = nodes.find((n) => n.roleSpec.workerType === 'repository')
+    expect(survey?.dependencies).toEqual([])
+    expect(survey?.id).not.toEqual(survey?.dependencies[0])
+  })
+
   it('honors the requested document count', () => {
     const nodes = new Planner().plan('Create 3 documents.')
     expect(nodes.filter((n) => n.roleSpec.workerType === 'document')).toHaveLength(3)
@@ -150,7 +172,9 @@ describe('Planner', () => {
       'Create the following documents: PRD, Security review',
       ['PRD', 'Security review'],
     )
+    const survey = nodes.filter((n) => n.roleSpec.workerType === 'repository')
     const documents = nodes.filter((n) => n.roleSpec.workerType === 'document')
+    expect(survey).toHaveLength(1)
     expect(documents.map((d) => d.title)).toEqual(['PRD', 'Security review'])
   })
 
@@ -285,10 +309,13 @@ describe('Planner', () => {
     }
 
     const nodes = await new Planner({ maxNodes: 8, modelProvider: provider }).planAsync(_request)
+    const survey = nodes.find((node) => node.roleSpec.workerType === 'repository')
     const analysis = nodes.find((node) => node.title === `Investigate ${title}`)
     const document = nodes.find((node) => node.title === title)
 
+    expect(survey).toBeDefined()
     expect(analysis?.roleSpec.workerType).toBe('analysis')
+    expect(analysis?.dependencies).toContain(survey?.id)
     expect(document?.roleSpec.workerType).toBe('document')
     expect(document?.dependencies).toContain(analysis?.id)
     expect(nodes.some((node) => node.roleSpec.workerType === 'validation')).toBe(true)

@@ -3,6 +3,7 @@ import { DocumentWorker } from './DocumentWorker'
 import type { DocumentGateway, CheckpointResult, CreatedDocType } from './DocumentGateway'
 import { FindingStore } from '../knowledge/FindingStore'
 import { ProjectFactBase } from '../knowledge/ProjectFactBase'
+import { EvidenceLedger } from '../knowledge/EvidenceLedger'
 import type { TaskNode } from '../contracts/TaskGraph'
 import type { ModelProvider } from '../model/ModelProvider'
 import type { ModelRequest } from '../model/ModelTypes'
@@ -128,6 +129,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings,
       facts,
+      evidence: new EvidenceLedger(),
       gateway: gateway(checkpoints),
     })
 
@@ -171,11 +173,75 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings,
       facts,
+      evidence: new EvidenceLedger(),
       gateway: gateway(checkpoints),
     })
 
     await worker.run(node(), ctx().ctx)
-    expect(prompts.every((p) => p.includes('FACT runtime: Node.js'))).toBe(true)
+    expect(prompts.every((p) => p.includes('runtime: Node.js'))).toBe(true)
+    expect(prompts.every((p) => p.includes('REPOSITORY KNOWLEDGE'))).toBe(true)
+  })
+
+  it('includes dependency outputs and evidence excerpts in section prompts', async () => {
+    const checkpoints: DocumentIR[] = []
+    const facts = new ProjectFactBase()
+    const findings = new FindingStore()
+    const evidence = new EvidenceLedger()
+    evidence.record(
+      {
+        path: 'extension/agent/runtime/AgentRuntime.ts',
+        startLine: 1,
+        endLine: 5,
+        excerpt: 'export class AgentRuntime',
+        kind: 'source',
+        sourceTool: 'read_file',
+      },
+      'rv1',
+    )
+    const evId = evidence.all()[0]!.id
+    findings.add({
+      claim: 'Agent runtime manages tasks',
+      type: 'observed',
+      domain: 'agent',
+      evidenceIds: [evId],
+      confidence: 'high',
+      assumptions: [],
+      contradictions: [],
+      repositoryVersion: 'rv1',
+    })
+    const prompts: string[] = []
+    const worker = new DocumentWorker({
+      provider: scriptedProvider({ prompts }),
+      baseConfig: { model: 'test' },
+      findings,
+      facts,
+      evidence,
+      gateway: gateway(checkpoints),
+    })
+    const { ctx: runCtx } = ctx()
+    runCtx.dependencyOutputs = [
+      JSON.stringify({ role: 'Security Analyst', findings: [{ claim: 'Uses worker threads' }] }),
+    ]
+    await worker.run(node(), runCtx)
+    expect(prompts.some((p) => p.includes('Prior analysis 1'))).toBe(true)
+    expect(prompts.some((p) => p.includes(`[EVIDENCE:${evId}]`))).toBe(true)
+  })
+
+  it('includes thin-knowledge grounding rules when facts are sparse', async () => {
+    const prompts: string[] = []
+    const worker = new DocumentWorker({
+      provider: scriptedProvider({ prompts }),
+      baseConfig: { model: 'test' },
+      findings: new FindingStore(),
+      facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
+      gateway: gateway([]),
+    })
+    const { ctx: runCtx } = ctx()
+    runCtx.extraKnowledgeGaps = ['Limited repository evidence (0/3 observed findings with evidence)']
+    await worker.run(node(), runCtx)
+    expect(prompts.some((p) => p.includes('STRICT GROUNDING RULES'))).toBe(true)
+    expect(prompts.some((p) => p.includes('warn blockquote'))).toBe(true)
   })
 
   it('uses provider JSON mode for outlines and document sections', async () => {
@@ -198,6 +264,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: gateway([]),
     })
 
@@ -228,6 +295,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: gateway(checkpoints),
     })
     const { ctx: runCtx, events } = ctx()
@@ -267,6 +335,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test', telemetry: (event) => telemetry.push(event) },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: gateway(checkpoints),
     })
 
@@ -312,6 +381,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: gateway(checkpoints),
     })
 
@@ -342,6 +412,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: gateway(checkpoints),
     })
     await worker.run(node(), ctx().ctx)
@@ -371,6 +442,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: gateway(checkpoints),
     })
     await worker.run(node(), ctx().ctx)
@@ -388,16 +460,16 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: gateway([]),
     })
     await worker.run(node(), ctx().ctx)
     const sectionPrompt = prompts.find((p) => !p.includes('Outline the'))!
     expect(sectionPrompt).toContain('"parts"')
     expect(sectionPrompt).toContain('{"md":')
-    expect(sectionPrompt).toContain('kpiGrid')
-    expect(sectionPrompt).toContain('stakeholderTable')
-    expect(sectionPrompt).toContain('"metric"')
-    expect(sectionPrompt).toContain('"nameRole"')
+    expect(sectionPrompt).toContain('mermaid')
+    expect(sectionPrompt).toContain('GFM tables')
+    expect(sectionPrompt).toContain('blockquotes')
   })
 
   it('parks the draft and stops when the user edited the document mid-generation', async () => {
@@ -412,6 +484,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: conflictGateway,
     })
 
@@ -437,6 +510,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: gateway([]),
     })
     await expect(worker.run(node(), ctx().ctx)).rejects.toThrow(/outline/i)
@@ -448,6 +522,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: gateway([]),
     })
     const { events, ctx: runCtx } = ctx()
@@ -493,6 +568,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: regenGateway,
     })
 
@@ -545,6 +621,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: {
         create: async (name) => ({ id: 'doc-x', name, icon: 'article', created: true }),
         loadIR: async () => ({ ir: storedIR, revision: 7 }),
@@ -576,6 +653,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: {
         create: async (name) => ({ id: 'doc-x', name, icon: 'article', created: true }),
         loadIR: async () => null,
@@ -613,6 +691,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: resumeGateway,
     })
 
@@ -653,6 +732,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test' },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: {
         create: async (name) => {
           created++
@@ -701,6 +781,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test', telemetry: (event) => telemetry.push(event) },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: gateway(checkpoints),
       mermaidValidator,
     })
@@ -754,6 +835,7 @@ describe('DocumentWorker', () => {
       baseConfig: { model: 'test', telemetry: (event) => telemetry.push(event) },
       findings: new FindingStore(),
       facts: new ProjectFactBase(),
+      evidence: new EvidenceLedger(),
       gateway: gateway(checkpoints),
       mermaidValidator,
     })

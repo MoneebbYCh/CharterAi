@@ -58,6 +58,8 @@ export interface OrchestratorRunnerOptions {
   conversationContext?: () => readonly string[]
   /** Per-model pricing for cost estimation. */
   pricing?: ModelPricing
+  /** Observed-finding count for document readiness checks. */
+  countObservedFindings?: () => number
 }
 
 const CONTINUATION_REQUEST =
@@ -106,6 +108,7 @@ export function orchestratorRunner(options: OrchestratorRunnerOptions): TaskRunn
       onGraphChange: options.onGraphChange,
       onNodeDurable: options.onNodeDurable,
       pricing: options.pricing,
+      countObservedFindings: options.countObservedFindings,
       resume: resume ? { graph: resume.graph } : undefined,
       emit: {
         activity: (a) => emit.activity(a),

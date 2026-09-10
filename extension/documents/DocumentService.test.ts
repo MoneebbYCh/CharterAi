@@ -137,6 +137,31 @@ describe('DocumentService', () => {
     expect(saved?.blocks).toEqual([{ type: 'paragraph', content: '' }])
   })
 
+  it('recovers parked drafts when the on-disk canvas is still empty', async () => {
+    const store = memoryDocumentStore()
+    const service = new DocumentService(store)
+    const { id } = await service.createDocType('Architecture')
+
+    await service.saveUserDocument(id, {
+      version: 1,
+      kind: 'blocknote',
+      blocks: [{ type: 'paragraph', content: '' }],
+      anchors: {},
+    })
+    const parked = await service.checkpoint(
+      id,
+      0,
+      ir([{ heading: 'Overview', blocks: [{ type: 'paragraph', text: 'from agent' }] }]),
+    )
+    expect(parked.conflict).toBe(true)
+
+    const loaded = await service.loadDocumentForCanvas(id)
+    expect(loaded.recoveredFromDraft).toBe(true)
+    expect(loaded.canvas?.blocks).toContainEqual({ type: 'paragraph', content: 'from agent' })
+    expect((await service.loadDocument(id))?.blocks).toContainEqual({ type: 'paragraph', content: 'from agent' })
+    expect(service.pendingDraftsFor(id)).toHaveLength(0)
+  })
+
   it('deletes the canvas file, registry entry, drafts, and agent IR', async () => {
     const store = memoryDocumentStore()
     const service = new DocumentService(store)

@@ -11,6 +11,7 @@ import {
 } from '../model/toolLoopTaskRunner'
 import { extractJsonBlock } from '../model/jsonBlock'
 import type { ModelProvider } from '../model/ModelProvider'
+import { enrichEvidenceIds, findingsFromEvidenceReads, countObservedWithEvidence } from '../knowledge/evidenceEnrichment'
 import { NAVIGATION_PLAYBOOK } from './navigationPlaybook'
 import type { WorkerRunResult, WorkerRunContext } from './AnalysisWorker'
 
@@ -58,6 +59,7 @@ function explorerSystemPrompt(node: TaskNode): string {
     `Rules:\n` +
     `- Only claim structure facts you actually read from the repository.\n` +
     `- Tool results label evidence as [EVIDENCE:<id>]. Cite the exact evidence ids for every observation.\n` +
+     `- If you read code but omit evidenceIds, document writers will NOT see that code.\n` +
      `- Note anything you could not verify under "unknowns" instead of guessing.\n` +
      `${NAVIGATION_PLAYBOOK}\n\n` +
      `- End your answer with ONE fenced JSON block:\n` +
@@ -116,20 +118,27 @@ export class RepositoryExplorerWorker {
     )
 
     const parsed = this.parse(loop.text)
-    const committed = this.commit(node, loop, parsed)
+    if (parsed.outcome !== 'valid') {
+      ctx.activity(
+        `Survey output ${parsed.outcome} for "${node.title}" (${loop.evidenceIds.length} evidence id(s) from tools)`,
+      )
+    }
+    const committed = this.commit(node, loop, parsed.data)
+    const observedCommitted = committed.filter((f) => f.type === 'observed' && f.evidenceIds.length > 0).length
+    ctx.activity(`Survey "${node.title}": ${observedCommitted} observed finding(s) with evidence committed`)
     const summary = JSON.stringify({
       role: spec.role,
-      overview: parsed.overview,
-      structure_highlights: parsed.structure_highlights,
-      package_manifest: parsed.package_manifest,
-      unknowns: parsed.unknowns,
+      overview: parsed.data.overview,
+      structure_highlights: parsed.data.structure_highlights,
+      package_manifest: parsed.data.package_manifest,
+      unknowns: parsed.data.unknowns,
     })
 
     return {
       outputs: [summary],
       findings: committed,
       evidenceIds: loop.evidenceIds,
-      unknowns: parsed.unknowns,
+      unknowns: parsed.data.unknowns,
       contradictions: [],
       coverageAchieved: [],
       recommendedFollowups: [],
@@ -138,13 +147,16 @@ export class RepositoryExplorerWorker {
     }
   }
 
-  private parse(text: string): ParsedExplorerOutput {
+  private parse(text: string): { data: ParsedExplorerOutput; outcome: 'valid' | 'malformed_json' | 'schema_mismatch' } {
     const raw = extractJsonBlock(text)
-    const result = raw === undefined ? undefined : explorerOutputSchema.safeParse(raw)
-    if (!result?.success) {
-      return { overview: '', structure_highlights: [], package_manifest: [], unknowns: [] }
+    if (raw === undefined) {
+      return { data: { overview: '', structure_highlights: [], package_manifest: [], unknowns: [] }, outcome: 'malformed_json' }
     }
-    return result.data
+    const result = explorerOutputSchema.safeParse(raw)
+    if (!result.success) {
+      return { data: { overview: '', structure_highlights: [], package_manifest: [], unknowns: [] }, outcome: 'schema_mismatch' }
+    }
+    return { data: result.data, outcome: 'valid' }
   }
 
   /**
@@ -159,7 +171,13 @@ export class RepositoryExplorerWorker {
     const domain = node.roleSpec.scope.domains?.[0] ?? node.title
     const observedIds = new Set(loop.evidenceIds)
     const observationInput = (observation: z.infer<typeof citedObservationSchema>, observationDomain: string) => {
-      const evidenceIds = [...new Set(observation.evidenceIds.filter((id) => observedIds.has(id)))]
+      const enriched = enrichEvidenceIds(
+        observation.claim,
+        observation.evidenceIds,
+        loop.evidenceIds,
+        this.deps.evidence,
+      )
+      const evidenceIds = [...new Set(enriched.filter((id) => observedIds.has(id)))]
       const isObserved = evidenceIds.length > 0
       return {
         claim: observation.claim,
@@ -188,6 +206,12 @@ export class RepositoryExplorerWorker {
         contradictions: [],
         repositoryVersion,
       })
+    }
+
+    if (countObservedWithEvidence(inputs) === 0 && loop.evidenceIds.length > 0) {
+      inputs.push(
+        ...findingsFromEvidenceReads(loop.evidenceIds, this.deps.evidence, domain, repositoryVersion),
+      )
     }
 
     return this.deps.knowledge.commit(inputs)

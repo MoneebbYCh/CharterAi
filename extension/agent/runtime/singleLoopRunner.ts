@@ -70,6 +70,7 @@ export interface SingleLoopRunnerOptions {
   runNode?: (node: TaskNode, ctx: NodeRunContext) => Promise<NodeRunResult | string[]>
   onGraphChange?: (nodes: TaskNode[]) => void
   onNodeDurable?: () => Promise<void> | void
+  countObservedFindings?: () => number
   /** Durable mirror of each mid-loop checkpoint (plan §14 resume). */
   onLoopCheckpoint?: (taskId: string, state: LoopState) => void
 }
@@ -107,6 +108,7 @@ export function singleLoopRunner(options: SingleLoopRunnerOptions): TaskRunner {
         runNode: options.runNode,
         onGraphChange: options.onGraphChange,
         onNodeDurable: options.onNodeDurable,
+        countObservedFindings: options.countObservedFindings,
         emit: graphEmit,
       })
       : undefined

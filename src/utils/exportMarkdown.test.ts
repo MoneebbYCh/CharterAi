@@ -58,74 +58,6 @@ describe('canvasToMarkdown', () => {
     ).toBe('- one\n\n1. two\n\n- [x] done\n\n- [ ] todo')
   })
 
-  it('renders callout as a blockquote with bold title', () => {
-    expect(
-      canvasToMarkdown(
-        doc([{ type: 'callout', props: { variant: 'warn', title: 'Heads up' }, content: 'Watch out' }]),
-      ),
-    ).toBe('> **Heads up**\n>\n> Watch out')
-  })
-
-  it('renders callout without title', () => {
-    expect(
-      canvasToMarkdown(doc([{ type: 'callout', props: { variant: 'info' }, content: 'Note' }])),
-    ).toBe('> **Callout**\n>\n> Note')
-  })
-
-  it('renders kpiGrid as a table', () => {
-    expect(
-      canvasToMarkdown(
-        doc([
-          {
-            type: 'kpiGrid',
-            props: { items: [{ metric: 'Uptime', target: '99.9%', method: 'ping' }] },
-          },
-        ]),
-      ),
-    ).toBe('| Metric | Target | Method |\n| --- | --- | --- |\n| Uptime | 99.9% | ping |')
-  })
-
-  it('renders scopeBounds with in/out lists, omitting empty sections', () => {
-    expect(
-      canvasToMarkdown(
-        doc([{ type: 'scopeBounds', props: { inScope: ['a', 'b'], outOfScope: ['c'] } }]),
-      ),
-    ).toBe('**In scope**\n\n- a\n- b\n\n**Out of scope**\n\n- c')
-    expect(
-      canvasToMarkdown(doc([{ type: 'scopeBounds', props: { inScope: ['a'], outOfScope: [] } }])),
-    ).toBe('**In scope**\n\n- a')
-  })
-
-  it('renders stakeholderTable as a table', () => {
-    expect(
-      canvasToMarkdown(
-        doc([
-          {
-            type: 'stakeholderTable',
-            props: { rows: [{ nameRole: 'Jane / PM', interest: 'H', influence: 'M', concern: 'schedule' }] },
-          },
-        ]),
-      ),
-    ).toBe(
-      '| Name / Role | Interest | Influence | Concern |\n| --- | --- | --- | --- |\n| Jane / PM | H | M | schedule |',
-    )
-  })
-
-  it('renders riskList as a table', () => {
-    expect(
-      canvasToMarkdown(
-        doc([
-          {
-            type: 'riskList',
-            props: { rows: [{ risk: 'Late deps', likelihood: 'M', impact: 'H', mitigation: 'buffer' }] },
-          },
-        ]),
-      ),
-    ).toBe(
-      '| Risk | Likelihood | Impact | Mitigation |\n| --- | --- | --- | --- |\n| Late deps | M | H | buffer |',
-    )
-  })
-
   it('renders diagram as a mermaid fence', () => {
     expect(
       canvasToMarkdown(
@@ -169,15 +101,9 @@ describe('canvasToMarkdown', () => {
     expect(canvasToMarkdown(doc([]))).toBe('')
   })
 
-  it('does not throw on malformed props', () => {
+  it('does not throw on malformed diagram props', () => {
     expect(() =>
-      canvasToMarkdown(
-        doc([
-          { type: 'kpiGrid', props: null },
-          { type: 'riskList', props: { rows: 'not-an-array' } },
-          { type: 'diagram', props: { code: 42 } },
-        ]),
-      ),
+      canvasToMarkdown(doc([{ type: 'diagram', props: { code: 42 } }])),
     ).not.toThrow()
   })
 })

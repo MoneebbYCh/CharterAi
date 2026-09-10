@@ -11,6 +11,7 @@ import {
 } from '../model/toolLoopTaskRunner'
 import { extractJsonBlock } from '../model/jsonBlock'
 import type { ModelProvider } from '../model/ModelProvider'
+import { enrichEvidenceIds, findingsFromEvidenceReads, countObservedWithEvidence } from '../knowledge/evidenceEnrichment'
 import { NAVIGATION_PLAYBOOK } from './navigationPlaybook'
 import type { TaskBudgetController } from '../observability/TaskControls'
 
@@ -96,6 +97,8 @@ function roleSystemPrompt(node: TaskNode): string {
     `- Every claim about current implementation behavior must be grounded in repository content you actually read.\n` +
      `- Distinguish observed facts from inference; use type "inferred"/"proposed" when you cannot prove a claim.\n` +
      `- Tool results label evidence as [EVIDENCE:<id>]. Every observed finding MUST cite only the exact evidence ids that support it.\n` +
+     `- If you read code but omit evidenceIds, the claim is downgraded and document writers will NOT see that code.\n` +
+     `- Do not end until each question has a cited observed finding or an explicit unknown.\n` +
      `${NAVIGATION_PLAYBOOK}\n` +
      `- End your answer with ONE fenced JSON block:\n` +
     '```json\n' +
@@ -153,42 +156,68 @@ export class AnalysisWorker {
     )
 
     const parsed = this.parse(loop.text)
-    const committed = this.commit(node, loop, parsed)
+    if (parsed.outcome !== 'valid') {
+      ctx.activity(
+        `Analysis output ${parsed.outcome} for "${node.title}" (${loop.evidenceIds.length} evidence id(s) from tools)`,
+      )
+    }
+    const committed = this.commit(node, loop, parsed.data)
+    const observedCommitted = committed.filter((f) => f.type === 'observed' && f.evidenceIds.length > 0).length
+    ctx.activity(
+      `Analysis "${node.title}": ${observedCommitted} observed finding(s) with evidence committed`,
+    )
     const summary = JSON.stringify({
       role: spec.role,
       findings: committed.map((f) => ({ claim: f.claim, type: f.type, confidence: f.confidence })),
-      unknowns: parsed.unknowns,
-      coverage: parsed.coverage_achieved,
+      unknowns: parsed.data.unknowns,
+      coverage: parsed.data.coverage_achieved,
     })
 
     return {
       outputs: [summary],
       findings: committed,
       evidenceIds: loop.evidenceIds,
-      unknowns: parsed.unknowns,
-      contradictions: parsed.contradictions,
-      coverageAchieved: parsed.coverage_achieved,
-      recommendedFollowups: parsed.recommended_followups,
-      newQuestions: parsed.new_questions,
-      missingCoverage: parsed.missing_coverage,
+      unknowns: parsed.data.unknowns,
+      contradictions: parsed.data.contradictions,
+      coverageAchieved: parsed.data.coverage_achieved,
+      recommendedFollowups: parsed.data.recommended_followups,
+      newQuestions: parsed.data.new_questions,
+      missingCoverage: parsed.data.missing_coverage,
     }
   }
 
-  private parse(text: string): ParsedWorkerOutput {
+  private parse(text: string): { data: ParsedWorkerOutput; outcome: 'valid' | 'malformed_json' | 'schema_mismatch' } {
     const raw = extractJsonBlock(text)
-    const result = raw === undefined ? undefined : workerOutputSchema.safeParse(raw)
-    if (!result?.success) {
+    if (raw === undefined) {
       return {
-        findings: [],
-        unknowns: [],
-        contradictions: [],
-        coverage_achieved: [],
-        recommended_followups: [],
-        new_questions: [],
-        missing_coverage: [],
+        data: {
+          findings: [],
+          unknowns: [],
+          contradictions: [],
+          coverage_achieved: [],
+          recommended_followups: [],
+          new_questions: [],
+          missing_coverage: [],
+        },
+        outcome: 'malformed_json',
       }
     }
-    return result.data
+    const result = workerOutputSchema.safeParse(raw)
+    if (!result.success) {
+      return {
+        data: {
+          findings: [],
+          unknowns: [],
+          contradictions: [],
+          coverage_achieved: [],
+          recommended_followups: [],
+          new_questions: [],
+          missing_coverage: [],
+        },
+        outcome: 'schema_mismatch',
+      }
+    }
+    return { data: result.data, outcome: 'valid' }
   }
 
   /**
@@ -205,7 +234,8 @@ export class AnalysisWorker {
 
     const observedIds = new Set(loop.evidenceIds)
     const inputs: Array<Omit<Finding, 'id'>> = parsed.findings.map((f) => {
-      const citedEvidenceIds = [...new Set(f.evidenceIds.filter((id) => observedIds.has(id)))]
+      const enrichedIds = enrichEvidenceIds(f.claim, f.evidenceIds, loop.evidenceIds, this.deps.evidence)
+      const citedEvidenceIds = [...new Set(enrichedIds.filter((id) => observedIds.has(id)))]
       const invalidEvidenceIds = f.evidenceIds.filter((id) => !observedIds.has(id))
       const type = f.type === 'observed' && citedEvidenceIds.length === 0 ? 'inferred' : f.type
       return {
@@ -238,6 +268,12 @@ export class AnalysisWorker {
         contradictions: [],
         repositoryVersion,
       })
+    }
+
+    if (countObservedWithEvidence(inputs) === 0 && loop.evidenceIds.length > 0) {
+      inputs.push(
+        ...findingsFromEvidenceReads(loop.evidenceIds, this.deps.evidence, domain, repositoryVersion),
+      )
     }
 
     return this.deps.knowledge.commit(inputs)

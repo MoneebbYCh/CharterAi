@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { View } from '../hooks/useViewState'
 import { BrandMark, DialogMascot } from '../components/BrandMark'
-import { TemplateDocPreview } from '../components/TemplateDocPreview'
+import { SoftPreviewBoundary } from '../components/SoftPreviewBoundary'
+import { TemplateCanvasPreview } from '../components/TemplateCanvasPreview'
 import {
   filterMarketplaceTemplates,
+  isCustomManifestTemplate,
   listMarketplaceTemplates,
   MARKETPLACE_CATEGORIES,
+  removeCustomMarketplaceTemplate,
   type MarketplaceCategory,
   type MarketplaceTemplate,
 } from '../data/marketplaceTemplates'
@@ -17,6 +20,10 @@ import { storageKeyFor } from '../utils/workspaceScope'
 interface TemplatesPageProps {
   onNavigate: (view: View) => void
   goHome: () => void
+  /** Focus gallery on this template after create/edit. */
+  highlightTemplateId?: string
+  /** Initial category pill (e.g. Saved after creating a custom template). */
+  initialCategory?: MarketplaceCategory
 }
 
 function openFromTemplate(template: MarketplaceTemplate, onNavigate: (view: View) => void) {
@@ -35,9 +42,14 @@ function openFromTemplate(template: MarketplaceTemplate, onNavigate: (view: View
   onNavigate({ page: created.id, seedFromMarketplaceId: template.id })
 }
 
-export function TemplatesPage({ onNavigate, goHome }: TemplatesPageProps) {
+export function TemplatesPage({
+  onNavigate,
+  goHome,
+  highlightTemplateId,
+  initialCategory = 'All',
+}: TemplatesPageProps) {
   const [query, setQuery] = useState('')
-  const [category, setCategory] = useState<MarketplaceCategory>('All')
+  const [category, setCategory] = useState<MarketplaceCategory>(initialCategory)
   const [selected, setSelected] = useState<MarketplaceTemplate | null>(null)
   const [variantId, setVariantId] = useState<string | null>(null)
   const [rev, setRev] = useState(0)
@@ -47,6 +59,20 @@ export function TemplatesPage({ onNavigate, goHome }: TemplatesPageProps) {
     () => filterMarketplaceTemplates(all, query, category),
     [all, query, category],
   )
+
+  // Re-read storage whenever we land here (e.g. after Save template) and open the new card.
+  useEffect(() => {
+    setRev((n) => n + 1)
+    if (initialCategory) setCategory(initialCategory)
+  }, [highlightTemplateId, initialCategory])
+
+  useEffect(() => {
+    if (!highlightTemplateId) return
+    const match = listMarketplaceTemplates().find((t) => t.id === highlightTemplateId)
+    if (!match) return
+    setSelected(match)
+    setVariantId(match.variants?.[0]?.id ?? null)
+  }, [highlightTemplateId, rev])
 
   const activeTemplate = useMemo(() => {
     if (!selected) return null
@@ -78,6 +104,16 @@ export function TemplatesPage({ onNavigate, goHome }: TemplatesPageProps) {
 
   const handleUse = (template: MarketplaceTemplate) => {
     openFromTemplate(template, onNavigate)
+    setRev((n) => n + 1)
+  }
+
+  const handleDeleteCustom = (template: MarketplaceTemplate) => {
+    if (!isCustomManifestTemplate(template)) return
+    const ok = window.confirm(`Delete custom template “${template.name}”? This cannot be undone.`)
+    if (!ok) return
+    removeCustomMarketplaceTemplate(template.id)
+    setSelected(null)
+    setVariantId(null)
     setRev((n) => n + 1)
   }
 
@@ -120,9 +156,30 @@ export function TemplatesPage({ onNavigate, goHome }: TemplatesPageProps) {
                 Templates
               </h1>
               <p className="text-[11px] text-on-surface-variant" style={{ fontFamily: 'var(--font-label)' }}>
-                Preview finished-looking starters — then open one in the canvas.
+                Preview starters, or draft a custom template on the canvas then review its structure.
               </p>
             </div>
+            <button
+              type="button"
+              className="border-2 border-on-background bg-primary text-on-primary font-bold px-3 py-1.5 text-xs outset-button shrink-0"
+              style={{ fontFamily: 'var(--font-label)' }}
+              onClick={() => {
+                const created = createDocType('Custom template draft', 'edit_note')
+                const doc: CanvasDocument = {
+                  ...emptyCanvasDocument(),
+                  anchors: { templateAuthoring: '1', templateId: 'custom-draft' },
+                }
+                try {
+                  localStorage.setItem(storageKeyFor(created.storageKey), JSON.stringify(doc))
+                } catch {
+                  /* ignore */
+                }
+                getVscodeApi()?.postMessage({ type: 'saveCanvas', phase: created.id, data: doc })
+                onNavigate({ page: created.id, authoringTemplate: true })
+              }}
+            >
+              + Create custom
+            </button>
           </div>
 
           <form className="mp-search" onSubmit={(e) => e.preventDefault()} role="search">
@@ -205,7 +262,7 @@ export function TemplatesPage({ onNavigate, goHome }: TemplatesPageProps) {
                   <button
                     key={template.id}
                     type="button"
-                    className="mp-card"
+                    className={`mp-card${highlightTemplateId === template.id ? ' mp-card--highlight' : ''}`}
                     onClick={() => openPreview(template)}
                   >
                     <div className="mp-card-preview" aria-hidden>
@@ -217,7 +274,13 @@ export function TemplatesPage({ onNavigate, goHome }: TemplatesPageProps) {
                       </div>
                       <div className="mp-card-preview-clip">
                         <div className="mp-card-preview-scale">
-                          <TemplateDocPreview blocks={thumbBlocks} mode="thumb" />
+                          <SoftPreviewBoundary>
+                            <TemplateCanvasPreview
+                              blocks={thumbBlocks}
+                              editorKey={`thumb-${template.id}`}
+                              variant="thumb"
+                            />
+                          </SoftPreviewBoundary>
                         </div>
                       </div>
                     </div>
@@ -305,7 +368,13 @@ export function TemplatesPage({ onNavigate, goHome }: TemplatesPageProps) {
                   {selected.variants?.length ? ` · ${activeTemplate.name}` : ''}
                 </p>
                 <div className="mp-modal-doc-sheet">
-                  <TemplateDocPreview blocks={activeBlocks} mode="full" />
+                  <SoftPreviewBoundary>
+                    <TemplateCanvasPreview
+                      blocks={activeBlocks}
+                      editorKey={activeTemplate.id}
+                      variant="full"
+                    />
+                  </SoftPreviewBoundary>
                 </div>
               </div>
             </div>
@@ -321,6 +390,28 @@ export function TemplatesPage({ onNavigate, goHome }: TemplatesPageProps) {
               >
                 Cancel
               </button>
+              {isCustomManifestTemplate(selected) ? (
+                <>
+                  <button
+                    type="button"
+                    className="border-2 border-on-background bg-white text-on-background font-bold px-5 py-2 text-sm outset-button"
+                    style={{ fontFamily: 'var(--font-label)' }}
+                    onClick={() => handleDeleteCustom(selected)}
+                  >
+                    Delete
+                  </button>
+                  <button
+                    type="button"
+                    className="border-2 border-on-background bg-secondary-container text-on-background font-bold px-5 py-2 text-sm outset-button"
+                    style={{ fontFamily: 'var(--font-label)' }}
+                    onClick={() =>
+                      onNavigate({ page: 'template-builder', editTemplateId: selected.id })
+                    }
+                  >
+                    Edit
+                  </button>
+                </>
+              ) : null}
               <button
                 type="button"
                 className="border-2 border-on-background bg-primary text-on-primary font-bold px-5 py-2 text-sm outset-button hover:opacity-90"

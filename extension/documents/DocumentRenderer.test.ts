@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import type { DocumentIR } from './DocumentIR'
 import { renderDocument } from './DocumentRenderer'
-import { documentIrSchema, type DocumentIR } from './DocumentIR'
+import { describe, expect, it } from 'vitest'
+import { documentIrSchema } from './DocumentIR'
 
 const ir = (sections: DocumentIR['sections']): DocumentIR => ({ title: 'Test Doc', sections })
 
@@ -35,7 +36,7 @@ describe('DocumentRenderer', () => {
     expect(canvas.blocks.filter((b) => b.type === 'bulletListItem')).toHaveLength(2)
   })
 
-  it('renders custom blocks in canonical prop shapes (rowsJson/inScopeJson)', () => {
+  it('renders widgets as quote, bullets, table, or diagram', () => {
     const canvas = renderDocument(
       ir([
         {
@@ -53,25 +54,30 @@ describe('DocumentRenderer', () => {
       ]),
     )
     expect(canvas.blocks).toContainEqual({
-      type: 'riskList',
-      props: { rowsJson: JSON.stringify([{ risk: 'Late deps', likelihood: 'M', impact: 'H', mitigation: 'buffer' }]) },
+      type: 'table',
+      content: {
+        type: 'tableContent',
+        rows: [
+          { cells: ['Risk', 'Likelihood', 'Impact', 'Mitigation'] },
+          { cells: ['Late deps', 'M', 'H', 'buffer'] },
+        ],
+      },
     })
-    expect(canvas.blocks).toContainEqual({
-      type: 'scopeBounds',
-      props: { inScopeJson: '["a"]', outOfScopeJson: '["b"]' },
-    })
+    expect(canvas.blocks).toContainEqual({ type: 'paragraph', content: '**In scope**' })
+    expect(canvas.blocks).toContainEqual({ type: 'bulletListItem', content: 'a' })
+    expect(canvas.blocks).toContainEqual({ type: 'paragraph', content: '**Out of scope**' })
+    expect(canvas.blocks).toContainEqual({ type: 'bulletListItem', content: 'b' })
     expect(canvas.blocks).toContainEqual({
       type: 'diagram',
       props: { code: 'flowchart TD\n  A --> B', title: 'Flow', source: 'llm' },
     })
     expect(canvas.blocks).toContainEqual({
-      type: 'callout',
-      props: { variant: 'warn', title: 'Heads up', anchorId: '' },
-      content: 'Note',
+      type: 'quote',
+      content: '**Heads up:** Note',
     })
   })
 
-  it('renders kpiGrid and stakeholderTable blocks in canonical prop shapes', () => {
+  it('renders kpiGrid and stakeholderTable as native tables', () => {
     const canvas = renderDocument(
       ir([
         {
@@ -90,12 +96,24 @@ describe('DocumentRenderer', () => {
       ]),
     )
     expect(canvas.blocks).toContainEqual({
-      type: 'kpiGrid',
-      props: { itemsJson: JSON.stringify([{ metric: 'Uptime', target: '99.9%', method: 'SLA dashboards' }]) },
+      type: 'table',
+      content: {
+        type: 'tableContent',
+        rows: [
+          { cells: ['Metric', 'Target', 'Method'] },
+          { cells: ['Uptime', '99.9%', 'SLA dashboards'] },
+        ],
+      },
     })
     expect(canvas.blocks).toContainEqual({
-      type: 'stakeholderTable',
-      props: { rowsJson: JSON.stringify([{ nameRole: 'Eng lead', interest: 'H', influence: 'M', concern: 'scope creep' }]) },
+      type: 'table',
+      content: {
+        type: 'tableContent',
+        rows: [
+          { cells: ['Name / Role', 'Interest', 'Influence', 'Concern'] },
+          { cells: ['Eng lead', 'H', 'M', 'scope creep'] },
+        ],
+      },
     })
   })
 

@@ -4,6 +4,9 @@ import {
   CANVAS_INSERT_ITEMS,
   type CanvasEditor,
 } from './canvasInsert'
+import { TableSizePicker } from './TableSizePicker'
+import { TableBorderControls } from './TableBorderControls'
+import type { TableBorderStyle } from './tableBorderStyle'
 import {
   FONT_FAMILIES,
   FONT_SIZES,
@@ -16,6 +19,8 @@ interface CanvasToolsSidebarProps {
   phaseTitle: string
   collapsed: boolean
   onToggleCollapsed: () => void
+  tableBorder: TableBorderStyle
+  onTableBorderChange: (next: TableBorderStyle) => void
 }
 
 type Align = 'left' | 'center' | 'right' | 'justify'
@@ -426,8 +431,10 @@ export function CanvasToolsSidebar({
   phaseTitle,
   collapsed,
   onToggleCollapsed,
+  tableBorder,
+  onTableBorderChange,
 }: CanvasToolsSidebarProps) {
-  const shapes = CANVAS_INSERT_ITEMS.filter((i) => i.group === 'Shapes')
+  const shapes = CANVAS_INSERT_ITEMS.filter((i) => i.group === 'Shapes' && i.id !== 'table')
   const textItems = CANVAS_INSERT_ITEMS.filter((i) => i.group === 'Text')
 
   if (collapsed) {
@@ -474,7 +481,19 @@ export function CanvasToolsSidebar({
         )}
 
         <section className="canvas-tools-section">
-          <h3 className="canvas-tools-section-title">Shapes</h3>
+          <h3 className="canvas-tools-section-title">Table</h3>
+          <TableSizePicker editor={editor} />
+          <div className="table-border-divider" />
+          <h4 className="canvas-tools-subsection-title">Borders</h4>
+          <TableBorderControls
+            value={tableBorder}
+            onChange={onTableBorderChange}
+            disabled={!editor}
+          />
+        </section>
+
+        <section className="canvas-tools-section">
+          <h3 className="canvas-tools-section-title">Diagram</h3>
           <p className="canvas-tools-section-hint">
             Insert at the cursor — same as typing <kbd>/</kbd> in the page.
           </p>

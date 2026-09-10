@@ -11,6 +11,9 @@ interface PipelineHeaderProps {
   onExport: () => void
   onSave: () => void
   saveLabel?: string
+  /** Open template builder with a draft extracted from the canvas. */
+  onSaveAsTemplate?: () => void
+  saveAsTemplateLabel?: string
   /** Current phase — highlights the active tab. */
   currentPhaseId?: string
   /** Jump between phases from the header strip. */
@@ -24,6 +27,8 @@ export function PipelineHeader({
   onExport,
   onSave,
   saveLabel = 'Save Draft',
+  onSaveAsTemplate,
+  saveAsTemplateLabel = 'Save as template',
   currentPhaseId,
   onNavigate,
   onDocRenamed,
@@ -91,6 +96,17 @@ export function PipelineHeader({
           >
             Export
           </button>
+          {onSaveAsTemplate ? (
+            <button
+              type="button"
+              onClick={onSaveAsTemplate}
+              className="outset-button border-2 border-on-background bg-primary text-on-primary font-bold px-4 py-1 text-xs"
+              style={{ fontFamily: 'var(--font-label)' }}
+              title="Review the outline from your headings, then save to the gallery"
+            >
+              {saveAsTemplateLabel}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onSave}

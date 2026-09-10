@@ -37,6 +37,7 @@ export interface CreateDocumentHandlerDeps {
   runNode?: (node: TaskNode, ctx: NodeRunContext) => Promise<NodeRunResult | string[]>
   onGraphChange?: (nodes: TaskNode[]) => void
   onNodeDurable?: () => Promise<void> | void
+  countObservedFindings?: () => number
   emit: RunTaskGraphEmit
 }
 
@@ -71,6 +72,7 @@ export function createDocumentHandler(deps: CreateDocumentHandlerDeps) {
         runNode: deps.runNode,
         onGraphChange: deps.onGraphChange,
         onNodeDurable: deps.onNodeDurable,
+        countObservedFindings: deps.countObservedFindings,
         emit,
       })
       return {

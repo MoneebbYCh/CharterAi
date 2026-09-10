@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, type CSSProperties } from 'react'
 import {
   useCreateBlockNote,
   SuggestionMenuController,
@@ -8,6 +8,7 @@ import { BlockNoteView } from '@blocknote/mantine'
 import { BlockNoteEditor, type Block, type PartialBlock } from '@blocknote/core'
 // Skip @blocknote/core/fonts/inter.css — Inter ships many weights (~400KB) and
 // the canvas already inherits Public Sans / JetBrains from app CSS.
+import '@blocknote/core/style.css'
 import '@blocknote/mantine/style.css'
 import type { BlockNoteBlock } from '../../types/document'
 import {
@@ -27,9 +28,34 @@ interface DocumentCanvasProps {
   editorKey?: string | number
   /** Expose the live editor for the tools sidebar. */
   onEditorReady?: (editor: CanvasEditor | null) => void
+  /** Gallery / template preview — no editing, slash menu, or drag handles. */
+  readOnly?: boolean
+  /** Document-level table border CSS variables. */
+  tableBorderStyle?: CSSProperties
 }
 
 const EMPTY_CONTENT: PartialBlock[] = [{ type: 'paragraph', content: '' }]
+
+function blockHasVisibleContent(block: PartialBlock): boolean {
+  const type = String(block.type || '')
+  if (type === 'diagram' || type === 'table') return true
+  const content = block.content
+  if (typeof content === 'string') return content.trim().length > 0
+  if (Array.isArray(content)) {
+    return content.some((c) => {
+      if (typeof c === 'string') return c.trim().length > 0
+      if (c && typeof c === 'object' && 'text' in c) {
+        return String((c as { text: unknown }).text).trim().length > 0
+      }
+      return false
+    })
+  }
+  return false
+}
+
+function contentHasBlocks(content: PartialBlock[]): boolean {
+  return content.some(blockHasVisibleContent)
+}
 
 function canCreateDocument(content: PartialBlock[]): boolean {
   try {
@@ -75,6 +101,8 @@ function DocumentCanvasInner({
   externalRevision,
   externalBlocks,
   onEditorReady,
+  readOnly = false,
+  tableBorderStyle,
 }: DocumentCanvasProps) {
   const applyingExternal = useRef(false)
   const lastExternalRevision = useRef(0)
@@ -90,7 +118,7 @@ function DocumentCanvasInner({
     schema: canvasSchema,
     initialContent,
     placeholders: {
-      default: "Type '/' for Scope, KPIs, Diagram…",
+      default: "Type '/' for Table, Diagram…",
       heading: 'Heading',
     },
   })
@@ -106,44 +134,49 @@ function DocumentCanvasInner({
     applyingExternal.current = true
     try {
       const next = safeInitialContent(externalBlocks)
+      const editorHasContent = contentHasBlocks(editor.document as PartialBlock[])
+      if (!contentHasBlocks(next) && editorHasContent) {
+        return
+      }
       editor.replaceBlocks(editor.document, next)
     } catch (err) {
       console.error('[DocumentCanvas] replaceBlocks failed', err)
-      try {
-        editor.replaceBlocks(editor.document, EMPTY_CONTENT)
-      } catch {
-        /* ignore secondary failure — ErrorBoundary will catch render issues */
-      }
     } finally {
-      queueMicrotask(() => {
+      window.setTimeout(() => {
         applyingExternal.current = false
-      })
+      }, 150)
     }
   }, [editor, externalBlocks, externalRevision])
 
   return (
-    <div className="bn-canvas-host">
+    <div
+      className={`bn-canvas-host${readOnly ? ' bn-canvas-host--readonly' : ''}`}
+      style={tableBorderStyle}
+    >
       <BlockNoteView
         editor={editor}
         theme="light"
+        editable={!readOnly}
         slashMenu={false}
         onChange={() => {
-          if (applyingExternal.current) return
+          if (readOnly || applyingExternal.current) return
           onChange(editor.document as unknown as BlockNoteBlock[])
         }}
       >
-        <SuggestionMenuController
-          triggerCharacter="/"
-          getItems={async (query) =>
-            filterSuggestionItems(
-              [
-                ...getDefaultReactSlashMenuItems(editor),
-                ...getCanvasSlashMenuItems(editor as CanvasEditor),
-              ],
-              query,
-            )
-          }
-        />
+        {!readOnly ? (
+          <SuggestionMenuController
+            triggerCharacter="/"
+            getItems={async (query) =>
+              filterSuggestionItems(
+                [
+                  ...getDefaultReactSlashMenuItems(editor),
+                  ...getCanvasSlashMenuItems(editor as CanvasEditor),
+                ],
+                query,
+              )
+            }
+          />
+        ) : null}
       </BlockNoteView>
     </div>
   )

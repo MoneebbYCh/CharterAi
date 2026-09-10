@@ -12,6 +12,7 @@ import {
   getWorkspaceId,
   setWorkspaceScope,
 } from './utils/workspaceScope'
+import { cacheCanvasPush } from './utils/canvasPushCache'
 import { useAgentSession } from './hooks/useAgentSession'
 import { useProviders } from './hooks/useProviders'
 import { ChatPanel } from './components/chat/ChatPanel'
@@ -26,6 +27,11 @@ const PhaseCanvasPage = lazy(() =>
 /** Marketplace templates catalog — defer until Templates is opened. */
 const TemplatesPage = lazy(() =>
   import('./pages/TemplatesPage').then((m) => ({ default: m.TemplatesPage })),
+)
+
+/** Custom template builder — same BlockNote preview as gallery. */
+const TemplateBuilderPage = lazy(() =>
+  import('./pages/TemplateBuilderPage').then((m) => ({ default: m.TemplateBuilderPage })),
 )
 
 function PageSuspense({ children }: { children: ReactNode }) {
@@ -103,6 +109,10 @@ function AppShell({ noWorkspace }: { noWorkspace: boolean }) {
         setDocTypesRev((n) => n + 1)
         return
       }
+      if (msg?.type === 'loadCanvas' && typeof msg.phase === 'string') {
+        cacheCanvasPush(msg.phase, msg.data, msg.revision)
+        return
+      }
       if (msg?.type === 'navigateTo' && typeof msg.view?.page === 'string') {
         navigate(msg.view)
       }
@@ -139,7 +149,32 @@ function AppShell({ noWorkspace }: { noWorkspace: boolean }) {
     if (view.page === 'templates') {
       return (
         <PageSuspense>
-          <TemplatesPage onNavigate={navigate} goHome={goHome} />
+          <TemplatesPage
+            key={`templates-${view.highlightTemplateId ?? 'default'}-${view.templatesCategory ?? 'All'}`}
+            onNavigate={navigate}
+            goHome={goHome}
+            highlightTemplateId={view.highlightTemplateId}
+            initialCategory={view.templatesCategory ?? 'All'}
+          />
+        </PageSuspense>
+      )
+    }
+    if (view.page === 'template-builder') {
+      return (
+        <PageSuspense>
+          <TemplateBuilderPage
+            key={
+              view.editTemplateId
+                ? `edit-${view.editTemplateId}`
+                : view.templateBuilderPrefill
+                  ? `prefill-${view.templateBuilderPrefill.source}-${view.templateBuilderPrefill.returnPhaseId ?? 'x'}-${view.templateBuilderPrefill.sections.length}`
+                  : 'new'
+            }
+            onNavigate={navigate}
+            goHome={goHome}
+            editTemplateId={view.editTemplateId}
+            prefill={view.templateBuilderPrefill}
+          />
         </PageSuspense>
       )
     }
@@ -147,11 +182,12 @@ function AppShell({ noWorkspace }: { noWorkspace: boolean }) {
       return (
         <PageSuspense>
           <PhaseCanvasPage
-            key={view.page}
+            key={`${view.page}-${view.authoringTemplate ? 'tmpl' : 'doc'}`}
             phaseId={view.page}
             onNavigate={navigate}
             goHome={goHome}
             seedFromMarketplaceId={view.seedFromMarketplaceId}
+            authoringTemplate={view.authoringTemplate}
           />
         </PageSuspense>
       )

@@ -5,11 +5,19 @@ import { CanvasErrorBoundary } from '../components/canvas/CanvasErrorBoundary'
 import { CanvasToolsSidebar } from '../components/canvas/CanvasToolsSidebar'
 import { CanvasNavRail } from '../components/canvas/CanvasNavRail'
 import type { CanvasEditor } from '../components/canvas/schema'
+import {
+  parseTableBorder,
+  serializeTableBorder,
+  tableBorderAnchorKey,
+  tableBorderCssVars,
+  type TableBorderStyle,
+} from '../components/canvas/tableBorderStyle'
 import { usePhaseDocument } from '../hooks/usePhaseDocument'
 import type { View } from '../hooks/useViewState'
 import { documentHasContent, documentHasOwnHeading } from '../types/document'
 import { getMarketplaceTemplate } from '../data/marketplaceTemplates'
 import { getDocumentType } from '../data/documentTypes'
+import { extractManifestFromBlocks } from '../data/templates/extractManifestFromBlocks'
 import { getVscodeApi } from '../utils/vscodeApi'
 import { canvasToMarkdown } from '../utils/exportMarkdown'
 import { LoadingSplash } from '../components/BrandMark'
@@ -20,6 +28,8 @@ interface PhaseCanvasPageProps {
   goHome: () => void
   /** Marketplace template id to apply once the canvas is ready (one-shot). */
   seedFromMarketplaceId?: string
+  /** Templates → Create custom: canvas draft with Continue-to-template action. */
+  authoringTemplate?: boolean
 }
 
 export function PhaseCanvasPage({
@@ -27,6 +37,7 @@ export function PhaseCanvasPage({
   onNavigate,
   goHome,
   seedFromMarketplaceId,
+  authoringTemplate = false,
 }: PhaseCanvasPageProps) {
   // In-app notice — webview window.alert is unreliable even with allowModals.
   const [notice, setNotice] = useState<string | null>(null)
@@ -43,8 +54,10 @@ export function PhaseCanvasPage({
 
   const {
     meta,
+    doc,
     blocks,
     setBlocks,
+    patchAnchors,
     applyExternalDocument,
     saveNow,
     reset,
@@ -54,6 +67,22 @@ export function PhaseCanvasPage({
     externalRevision,
     externalBlocks,
   } = usePhaseDocument(phaseId, { onReplaced: handleDraftReplaced })
+
+  const tableBorder = useMemo(
+    () => parseTableBorder(doc.anchors?.[tableBorderAnchorKey()]),
+    [doc.anchors],
+  )
+  const tableBorderStyle = useMemo(() => tableBorderCssVars(tableBorder), [tableBorder])
+  const handleTableBorderChange = useCallback(
+    (next: TableBorderStyle) => {
+      patchAnchors({ [tableBorderAnchorKey()]: serializeTableBorder(next) })
+    },
+    [patchAnchors],
+  )
+
+  /** Survives tab switches — stamped on the draft when Create custom opens it. */
+  const isAuthoringTemplate =
+    authoringTemplate || doc.anchors?.templateAuthoring === '1'
 
   const [editor, setEditor] = useState<CanvasEditor | null>(null)
   const [toolsCollapsed, setToolsCollapsed] = useState(false)
@@ -112,6 +141,27 @@ export function PhaseCanvasPage({
     })
   }
 
+  const handleContinueToTemplate = () => {
+    saveNow()
+    const source = editor?.document?.length
+      ? (editor.document as unknown as typeof blocks)
+      : blocks
+    const extracted = extractManifestFromBlocks(source)
+    const docMeta = getDocumentType(phaseId)
+    onNavigate({
+      page: 'template-builder',
+      templateBuilderPrefill: {
+        source: 'canvas',
+        name: extracted.suggestedTitle || displayTitle,
+        icon: docMeta?.icon || 'edit_note',
+        sections: extracted.sections,
+        hadHeadings: extracted.hadHeadings && extracted.sections.length > 0,
+        returnPhaseId: phaseId,
+        returnAuthoringTemplate: true,
+      },
+    })
+  }
+
   const saveLabel = isDirty
     ? 'Saving…'
     : lastSaved
@@ -131,10 +181,31 @@ export function PhaseCanvasPage({
           {notice}
         </div>
       ) : null}
+      {isAuthoringTemplate ? (
+        <div className="tmpl-author-bar" role="region" aria-label="Save custom template">
+          <div className="tmpl-author-bar-copy">
+            <p className="tmpl-author-bar-title">Custom template draft</p>
+            <p className="tmpl-author-bar-hint">
+              Write headings, diagrams, and sections like a normal doc. When you&apos;re ready, review
+              the outline and save it to the gallery — Save Draft only keeps this working copy.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="tmpl-author-bar-cta outset-button border-2 border-on-background bg-primary text-on-primary font-bold px-4 py-2 text-sm shrink-0"
+            style={{ fontFamily: 'var(--font-label)' }}
+            onClick={handleContinueToTemplate}
+          >
+            Review & save template →
+          </button>
+        </div>
+      ) : null}
       <PipelineHeader
         onHome={goHome}
         onExport={handleExport}
         onSave={saveNow}
+        onSaveAsTemplate={isAuthoringTemplate ? handleContinueToTemplate : undefined}
+        saveAsTemplateLabel="Review & save template"
         saveLabel={saveLabel}
         currentPhaseId={phaseId}
         onNavigate={onNavigate}
@@ -147,6 +218,8 @@ export function PhaseCanvasPage({
           phaseTitle={displayTitle}
           collapsed={toolsCollapsed}
           onToggleCollapsed={() => setToolsCollapsed((v) => !v)}
+          tableBorder={tableBorder}
+          onTableBorderChange={handleTableBorderChange}
         />
 
         <div className="charter-canvas-main">
@@ -169,8 +242,9 @@ export function PhaseCanvasPage({
                     onChange={setBlocks}
                     externalRevision={externalRevision}
                     externalBlocks={externalBlocks}
-                    editorKey={`${phaseId}-${externalRevision}`}
+                    editorKey={phaseId}
                     onEditorReady={handleEditorReady}
+                    tableBorderStyle={tableBorderStyle}
                   />
                 </CanvasErrorBoundary>
               )}

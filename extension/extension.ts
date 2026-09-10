@@ -93,6 +93,8 @@ export function activate(context: vscode.ExtensionContext) {
   // never the webview).
   let agent: AgentRuntimeClient | undefined
   let agentConfig: ProviderConfig = { providerId: 'deepseek', backend: 'openai', model: 'deepseek-v4-flash' }
+  /** One auto-navigation per agent-created document per extension session. */
+  const autoOpenedAgentDocs = new Set<string>()
 
   function readProviderSettings(): ProviderSettings {
     const cfg = vscode.workspace.getConfiguration('charterAi')
@@ -208,12 +210,30 @@ export function activate(context: vscode.ExtensionContext) {
             // Keep an open canvas in sync with agent generation. Persisted
             // checkpoints otherwise remain invisible until the user reloads.
             if (result.ok && !result.conflict) {
+              const { canvas } = await docs.loadDocumentForCanvas(p.documentId)
               postMessage({
                 type: 'loadCanvas',
                 phase: p.documentId,
-                data: await docs.loadDocument(p.documentId),
+                data: canvas,
                 revision: result.revision,
               })
+              if (!autoOpenedAgentDocs.has(p.documentId)) {
+                autoOpenedAgentDocs.add(p.documentId)
+                postMessage({ type: 'navigateTo', view: { page: p.documentId } })
+              }
+            } else if (result.ok && result.conflict) {
+              const draft = result.pendingDraftId ? docs.pendingDraft(result.pendingDraftId) : undefined
+              if (draft?.canvas) {
+                postMessage({
+                  type: 'loadCanvas',
+                  phase: p.documentId,
+                  data: draft.canvas,
+                  revision: result.revision,
+                })
+              }
+              vscode.window.showWarningMessage(
+                'Charter Ai parked a document update because the canvas changed during generation. Your latest draft is shown — click Apply draft in chat to save it.',
+              )
             }
             return { ok: true, result }
           } catch (err) {
@@ -656,10 +676,10 @@ export function activate(context: vscode.ExtensionContext) {
         break
       }
       case 'loadCanvas': {
-        const data = await loadForm(ws, msg.phase)
         const docs = ensureDocumentService(ws)
         await docs.ready()
-        postMessage({ type: 'loadCanvas', phase: msg.phase, data, revision: docs.revisionOf(msg.phase) })
+        const { canvas, revision } = await docs.loadDocumentForCanvas(msg.phase)
+        postMessage({ type: 'loadCanvas', phase: msg.phase, data: canvas, revision })
         break
       }
       case 'saveCanvas': {

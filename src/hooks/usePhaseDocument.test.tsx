@@ -410,6 +410,30 @@ describe('usePhaseDocument', () => {
     }
   })
 
+  it('does not replace checkpoint content with an empty disk load', () => {
+    const created = createDocType('Empty Disk Race Doc')
+    const { result } = renderHook(() => usePhaseDocument(created.id))
+    postMessage.mockClear()
+
+    dispatchLoadCanvas(created.id, diskDoc('agent checkpoint'), 1)
+    expect(result.current.blocks[0].content).toBe('agent checkpoint')
+
+    dispatchLoadCanvas(created.id, null, 1)
+    expect(result.current.blocks[0].content).toBe('agent checkpoint')
+  })
+
+  it('does not replace newer checkpoint content with a stale disk load', () => {
+    const created = createDocType('Stale Revision Doc')
+    const { result } = renderHook(() => usePhaseDocument(created.id))
+    postMessage.mockClear()
+
+    dispatchLoadCanvas(created.id, diskDoc('sections one through five'), 5)
+    expect(result.current.blocks[0].content).toBe('sections one through five')
+
+    dispatchLoadCanvas(created.id, diskDoc('sections one through two'), 3)
+    expect(result.current.blocks[0].content).toBe('sections one through five')
+  })
+
   it('does not let a same-tick host load clobber a newly typed edit', () => {
     const created = createDocType('Same Tick Race Doc')
     const { result } = renderHook(() => usePhaseDocument(created.id))

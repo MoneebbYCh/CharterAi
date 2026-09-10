@@ -25,6 +25,25 @@ function insert(editor: CanvasEditor, block: Record<string, unknown>) {
   insertOrUpdateBlockForSlashMenu(editor as never, block as never)
 }
 
+/** Empty BlockNote table — cells are inline-editable on the canvas. */
+export function emptyTableBlock(rows: number, cols: number): Record<string, unknown> {
+  const r = Math.max(1, Math.min(12, Math.floor(rows)))
+  const c = Math.max(1, Math.min(12, Math.floor(cols)))
+  return {
+    type: 'table',
+    content: {
+      type: 'tableContent',
+      rows: Array.from({ length: r }, () => ({
+        cells: Array.from({ length: c }, () => ''),
+      })),
+    },
+  }
+}
+
+export function insertTable(editor: CanvasEditor, rows: number, cols: number): void {
+  insert(editor, emptyTableBlock(rows, cols))
+}
+
 /** Shared catalog for slash menu + tools sidebar. */
 export const CANVAS_INSERT_ITEMS: CanvasInsertItem[] = [
   {
@@ -76,80 +95,12 @@ export const CANVAS_INSERT_ITEMS: CanvasInsertItem[] = [
     insert: (editor) => insert(editor, { type: 'numberedListItem', content: '' }),
   },
   {
-    id: 'callout',
-    title: 'Callout',
-    description: 'Highlighted note / warning',
+    id: 'table',
+    title: 'Table',
+    description: 'Inline-editable grid',
     group: 'Shapes',
-    aliases: ['alert', 'note', 'info', 'warn'],
-    insert: (editor) =>
-      insert(editor, {
-        type: 'callout',
-        props: { variant: 'info', title: 'Note' },
-        content: 'Write the callout body…',
-      }),
-  },
-  {
-    id: 'kpiGrid',
-    title: 'KPI Grid',
-    description: 'Measurable objectives',
-    group: 'Shapes',
-    aliases: ['kpi', 'metrics', 'targets', 'objectives'],
-    insert: (editor) =>
-      insert(editor, {
-        type: 'kpiGrid',
-        props: {
-          itemsJson: JSON.stringify([
-            { metric: 'Primary objective', target: 'Measurable target', method: 'How verified' },
-          ]),
-        },
-      }),
-  },
-  {
-    id: 'scopeBounds',
-    title: 'Scope Bounds',
-    description: 'In scope vs exclusions',
-    group: 'Shapes',
-    aliases: ['scope', 'in scope', 'out of scope'],
-    insert: (editor) =>
-      insert(editor, {
-        type: 'scopeBounds',
-        props: {
-          inScopeJson: JSON.stringify(['In-scope item']),
-          outOfScopeJson: JSON.stringify(['Explicit exclusion']),
-        },
-      }),
-  },
-  {
-    id: 'stakeholderTable',
-    title: 'Stakeholders',
-    description: 'Interest & influence table',
-    group: 'Shapes',
-    aliases: ['stakeholders', 'people', 'roles'],
-    insert: (editor) =>
-      insert(editor, {
-        type: 'stakeholderTable',
-        props: {
-          rowsJson: JSON.stringify([
-            { nameRole: 'Name / Role', interest: 'H', influence: 'M', concern: 'Concern' },
-          ]),
-        },
-      }),
-  },
-  {
-    id: 'riskList',
-    title: 'Risk List',
-    description: 'Likelihood × impact',
-    group: 'Shapes',
-    aliases: ['risks', 'risk', 'mitigation'],
-    insert: (editor) =>
-      insert(editor, {
-        type: 'riskList',
-        props: {
-          rowsJson: JSON.stringify([
-            { risk: 'Risk', likelihood: 'M', impact: 'H', mitigation: 'Mitigation' },
-          ]),
-        },
-      }),
+    aliases: ['table', 'grid'],
+    insert: (editor) => insertTable(editor, 3, 3),
   },
   {
     id: 'diagram',
@@ -174,7 +125,7 @@ export function getCanvasSlashMenuItems(editor: CanvasEditor): DefaultReactSugge
     title: item.title,
     subtext: item.description,
     aliases: item.aliases,
-    group: 'Charter shapes',
+    group: 'Insert',
     onItemClick: () => item.insert(editor),
   }))
 }

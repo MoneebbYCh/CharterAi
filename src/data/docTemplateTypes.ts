@@ -31,7 +31,7 @@ export const BLANK_TEMPLATE: DocTemplate = {
   category: 'Blank',
   tagline: 'Start with an empty canvas and craft it exactly how you want.',
   description:
-    'A blank document. Use the tools sidebar (or type "/") to add headings, callouts, KPI grids, scope bounds, stakeholder tables, risk lists, and diagrams as you go.',
+    'A blank document. Use the tools sidebar (or type "/") to add headings, tables, and diagrams as you go.',
   custom: true,
   build: () => [para('')],
 }
@@ -42,12 +42,8 @@ export const CUSTOM_CHARTER_TEMPLATE = BLANK_TEMPLATE
 /** A readable section outline for previewing a template without rendering the editor. */
 export function templateOutline(template: DocTemplate): string[] {
   const shapeLabels: Record<string, string> = {
-    callout: 'Callout',
-    kpiGrid: 'KPI grid',
-    scopeBounds: 'Scope bounds',
-    stakeholderTable: 'Stakeholder table',
-    riskList: 'Risk list',
     diagram: 'Diagram',
+    table: 'Table',
   }
   const outline: string[] = []
   for (const block of template.build()) {

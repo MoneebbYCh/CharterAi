@@ -1,8 +1,8 @@
-import type { EvidenceRecord } from '../contracts/Evidence'
 import type { Finding, ProjectFact } from '../contracts/Finding'
 import type { ModelProvider } from '../model/ModelProvider'
 import type { ModelEvent, ModelRequest } from '../model/ModelTypes'
 import type { AgentSession } from '../session'
+import { buildDocumentKnowledgePack } from '../knowledge/KnowledgePromptBuilder'
 import { buildContext } from './ContextBuilder'
 
 export interface ContextStateSource {
@@ -32,15 +32,20 @@ export class ContextualModelProvider implements ModelProvider {
 
   private withContext(request: ModelRequest): ModelRequest {
     const session = this.source.session()
-    const evidenceById = new Map(this.source.evidence().map((record) => [record.id, record]))
-    const facts = this.source.facts().slice(-30)
-    const findings = this.source.findings().slice(-40)
-    const evidenceIds = new Set([...facts.flatMap((fact) => fact.evidenceIds), ...findings.flatMap((finding) => finding.evidenceIds)])
-    const evidence = [...evidenceIds]
-      .map((id) => evidenceById.get(id))
-      .filter((record): record is EvidenceRecord => Boolean(record))
-      .slice(-20)
-      .map((record) => `[EVIDENCE:${record.id}] ${record.path}${record.range ? `:${record.range.startLine}-${record.range.endLine}` : ''}\n${record.excerpt ?? ''}`)
+    const pack = buildDocumentKnowledgePack({
+      facts: this.source.facts(),
+      findings: this.source.findings(),
+      evidence: this.source.evidence(),
+      tokenBudget: Math.floor(this.budget * 0.6),
+      documentTitle: request.context?.task?.title,
+    })
+    const knowledgeFindings = [
+      ...pack.layers.knowledgeGaps,
+      ...pack.layers.surveySummary,
+      ...pack.layers.priorAnalysis,
+      ...pack.layers.facts,
+      ...pack.layers.findings,
+    ]
     const recentTurns = (session?.turns ?? []).slice(-6).map((turn) => `${turn.role.toUpperCase()}: ${turn.content}`)
     const objective = request.messages.filter((message) => message.role === 'user').at(-1)?.content ?? ''
     const task = request.context?.task
@@ -59,11 +64,8 @@ export class ContextualModelProvider implements ModelProvider {
       objective: `Current objective:\n${objective}`,
       roleSpec: taskState,
       instructions: [...(this.source.projectInstructions?.() ?? []), ...(request.context?.instructions ?? [])],
-      findings: [
-        ...facts.map((fact) => `[FACT:${fact.id}] ${fact.statement} (evidence: ${fact.evidenceIds.join(', ') || 'none'})`),
-        ...findings.map((finding) => `[FINDING:${finding.id}] ${finding.claim} (evidence: ${finding.evidenceIds.join(', ') || 'none'})`),
-      ],
-      evidenceExcerpts: evidence,
+      findings: knowledgeFindings,
+      evidenceExcerpts: pack.layers.evidenceExcerpts,
       conversation: [session?.conversationSummary ? `Prior session summary:\n${session.conversationSummary}` : '', ...recentTurns],
     }, this.budget)
     // `context` is runtime metadata only. Do not allow wrapped provider

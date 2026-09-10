@@ -10,10 +10,9 @@ export interface RenderedCanvasDocument {
 }
 
 /**
- * Deterministic DocumentIR → CanvasDocument renderer (plan §11). Produces the
- * codebase's canonical simplified BlockNote shapes (string content, custom
- * blocks as `rowsJson`/`inScopeJson` JSON props) — valid complete snapshots
- * only, never partial BlockNote JSON.
+ * Deterministic DocumentIR → CanvasDocument renderer.
+ * Custom IR widgets (callout/risk/scope/kpi/stakeholders) compile to quote,
+ * bullet, or native BlockNote table — canvas schema only has diagram + defaults.
  */
 export function renderDocument(ir: DocumentIR): RenderedCanvasDocument {
   const blocks: Array<Record<string, unknown>> = []
@@ -47,6 +46,18 @@ function renderSection(section: DocumentSection): Array<Record<string, unknown>>
   return blocks
 }
 
+function nativeTable(header: string[], rows: string[][]): Array<Record<string, unknown>> {
+  return [
+    {
+      type: 'table',
+      content: {
+        type: 'tableContent',
+        rows: [{ cells: header }, ...rows.map((row) => ({ cells: header.map((_, i) => row[i] ?? '') }))],
+      },
+    },
+  ]
+}
+
 function renderBlock(block: IRBlock): Array<Record<string, unknown>> {
   switch (block.type) {
     case 'markdown':
@@ -57,28 +68,14 @@ function renderBlock(block: IRBlock): Array<Record<string, unknown>> {
       return block.items.map((item) => ({ type: 'bulletListItem', content: item }))
     case 'numbered':
       return block.items.map((item) => ({ type: 'numberedListItem', content: item }))
-    case 'table': {
-      const rows = [
-        { cells: block.header },
-        ...block.rows.map((row) => ({
-          cells: block.header.map((_, i) => row[i] ?? ''),
-        })),
-      ]
-      return [
-        {
-          type: 'table',
-          content: { type: 'tableContent', rows },
-        },
-      ]
+    case 'table':
+      return nativeTable(block.header, block.rows)
+    case 'callout': {
+      const title = block.title?.trim()
+      const body = block.text.trim()
+      const text = title ? `**${title}:** ${body}` : body
+      return [{ type: 'quote', content: text }]
     }
-    case 'callout':
-      return [
-        {
-          type: 'callout',
-          props: { variant: block.variant ?? 'info', title: block.title ?? '', anchorId: '' },
-          content: block.text,
-        },
-      ]
     case 'mermaid':
       return [
         {
@@ -87,57 +84,41 @@ function renderBlock(block: IRBlock): Array<Record<string, unknown>> {
         },
       ]
     case 'risk':
-      return [
-        {
-          type: 'riskList',
-          props: {
-            rowsJson: JSON.stringify(
-              block.rows.map((r) => ({
-                risk: r.risk,
-                likelihood: r.likelihood ?? '',
-                impact: r.impact ?? '',
-                mitigation: r.mitigation ?? '',
-              })),
-            ),
-          },
-        },
-      ]
-    case 'scope':
-      return [
-        {
-          type: 'scopeBounds',
-          props: {
-            inScopeJson: JSON.stringify(block.inScope),
-            outOfScopeJson: JSON.stringify(block.outOfScope),
-          },
-        },
-      ]
+      return nativeTable(
+        ['Risk', 'Likelihood', 'Impact', 'Mitigation'],
+        block.rows.map((r) => [
+          r.risk,
+          r.likelihood ?? '',
+          r.impact ?? '',
+          r.mitigation ?? '',
+        ]),
+      )
+    case 'scope': {
+      const out: Array<Record<string, unknown>> = []
+      if (block.inScope.length) {
+        out.push({ type: 'paragraph', content: '**In scope**' })
+        out.push(...block.inScope.map((item) => ({ type: 'bulletListItem', content: item })))
+      }
+      if (block.outOfScope.length) {
+        out.push({ type: 'paragraph', content: '**Out of scope**' })
+        out.push(...block.outOfScope.map((item) => ({ type: 'bulletListItem', content: item })))
+      }
+      return out
+    }
     case 'kpiGrid':
-      return [
-        {
-          type: 'kpiGrid',
-          props: {
-            itemsJson: JSON.stringify(
-              block.items.map((i) => ({ metric: i.metric, target: i.target ?? '', method: i.method ?? '' })),
-            ),
-          },
-        },
-      ]
+      return nativeTable(
+        ['Metric', 'Target', 'Method'],
+        block.items.map((i) => [i.metric, i.target ?? '', i.method ?? '']),
+      )
     case 'stakeholderTable':
-      return [
-        {
-          type: 'stakeholderTable',
-          props: {
-            rowsJson: JSON.stringify(
-              block.rows.map((r) => ({
-                nameRole: r.nameRole,
-                interest: r.interest ?? '',
-                influence: r.influence ?? '',
-                concern: r.concern ?? '',
-              })),
-            ),
-          },
-        },
-      ]
+      return nativeTable(
+        ['Name / Role', 'Interest', 'Influence', 'Concern'],
+        block.rows.map((r) => [
+          r.nameRole,
+          r.interest ?? '',
+          r.influence ?? '',
+          r.concern ?? '',
+        ]),
+      )
   }
 }

@@ -6,6 +6,7 @@ import { PLAYBOOKS, type Playbook } from './playbooks'
 import { z } from 'zod'
 import type { ModelProvider } from '../model/ModelProvider'
 import { DOCUMENT_REQUEST } from './DocumentIntent'
+import { REQUIRED_EVIDENCE_MIN_OBSERVED } from '../knowledge/KnowledgePromptBuilder'
 
 export type { RegenerateSectionSignal, ReplanSignal } from '../contracts/Validation'
 
@@ -76,6 +77,40 @@ const DOMAIN_DOCUMENTS: Record<string, string> = {
   scalability: 'Scalability Strategy',
   'technical-debt': 'Technical Debt Assessment',
   migration: 'Migration Plan',
+}
+
+function repositoryWorkerSpec(id: string): WorkerSpec {
+  return {
+    id: `ws-${id}`,
+    workerType: 'repository',
+    role: 'Repository Explorer',
+    objective: 'Survey repository structure, manifests, and entry points.',
+    scope: { roots: ['*'] },
+    questions: [
+      'What is the top-level repository structure?',
+      'What are the main packages and entry points?',
+      'What dependency manifests exist?',
+    ],
+    requiredCoverage: ['Repository structure survey'],
+    allowedTools: [
+      'list_files',
+      'search_files',
+      'search_code',
+      'read_file',
+      'read_file_range',
+      'get_project_structure',
+      'get_package_info',
+      'find_symbol',
+      'find_definition',
+      'find_references',
+      'get_imports',
+      'get_dependencies',
+      'get_dependents',
+    ],
+    inputFindingIds: [],
+    outputSchema: 'findings',
+    budget: ANALYSIS_NODE_BUDGET,
+  }
 }
 
 function workerSpecFor(title: string, objective: string, id: string): WorkerSpec {
@@ -171,6 +206,12 @@ export class Planner {
     return this.plan(text)
   }
 
+  /** Playbook-driven analysis nodes only — never recurses into document planning. */
+  private planAnalysisNodes(text: string): TaskNode[] {
+    const stripped = text.replace(new RegExp(DOC_REQUEST.source, 'gi'), 'analyze the repository')
+    return this.plan(stripped).filter((node) => node.roleSpec.workerType === 'analysis')
+  }
+
   /** Initial graph for a complex request — validated acyclic by construction (no dependencies yet). */
   plan(text: string): TaskNode[] {
     if (DOC_REQUEST.test(text)) return this.planDocuments(text)
@@ -225,11 +266,14 @@ export class Planner {
   }
 
   private fromStructuredPlan(plan: PlanningResult): TaskNode[] {
+    const survey = this.repositorySurveyNode()
     const analysis = plan.analysis.slice(0, this.maxNodes).map((item) =>
-      this.dynamicNode(item.domain, item.title, item.objective, item.questions, item.requiredCoverage),
+      this.dynamicNode(item.domain, item.title, item.objective, item.questions, item.requiredCoverage, survey.id),
     )
-    if (plan.deliverables.length === 0) return analysis.length > 0 ? analysis : this.plan('analyze repository')
-    const room = this.maxNodes - analysis.length
+    if (plan.deliverables.length === 0) {
+      return analysis.length > 0 ? [survey, ...analysis] : this.plan('analyze repository')
+    }
+    const room = this.maxNodes - analysis.length - 1
     const maxDocuments = Math.max(0, Math.floor((room - (plan.deliverables.length > 1 ? 1 : 0)) / 2))
     const documents = plan.deliverables.slice(0, maxDocuments).map((item) => {
       const node = this.documentNode(item.title, analysis.map((a) => a.id))
@@ -237,7 +281,7 @@ export class Planner {
     })
     const validations = documents.map((document) => this.validationNode(document.id, document.title))
     const cross = documents.length > 1 ? [this.crossDocumentNode(validations.map((node) => node.id))] : []
-    return [...analysis, ...documents, ...validations, ...cross]
+    return [survey, ...analysis, ...documents, ...validations, ...cross]
   }
 
   /**
@@ -277,18 +321,20 @@ export class Planner {
   }
 
   private planDocumentsWithTitles(text: string, titles: string[]): TaskNode[] {
+    const survey = this.repositorySurveyNode()
     // Reserve graph capacity before planning analysis. Otherwise a request
     // that matches several domains can consume the node cap and silently
     // eliminate the document and validation nodes it explicitly requested.
-    const reservedDeliverableNodes = titles.length * 2 + (titles.length > 1 ? 1 : 0)
+    const reservedDeliverableNodes = titles.length * 2 + (titles.length > 1 ? 1 : 0) + 1
     const analysis = this
-      .plan(text.replace(DOC_REQUEST, 'analyze the repository'))
+      .planAnalysisNodes(text)
       .slice(0, Math.max(0, this.maxNodes - reservedDeliverableNodes))
+      .map((node) => ({ ...node, dependencies: [survey.id] }))
 
     const analysisIds = analysis.map((n) => n.id)
     // Each document costs a doc node + a validation node; multi-doc adds one
     // cross-document node. Never exceed the planner's own node cap.
-    const room = this.maxNodes - analysis.length
+    const room = this.maxNodes - analysis.length - 1
     const crossDocumentCost = titles.length > 1 ? 1 : 0
     const maxDocs = Math.max(0, Math.floor((room - crossDocumentCost) / 2))
     const documentNodes = titles.slice(0, Math.max(0, maxDocs)).map((title) =>
@@ -300,7 +346,7 @@ export class Planner {
       ? [this.crossDocumentNode(validationNodes.map((v) => v.id))]
       : []
 
-    return [...analysis, ...documentNodes, ...validationNodes, ...crossNode]
+    return [survey, ...analysis, ...documentNodes, ...validationNodes, ...crossNode]
   }
 
   /** One validation node per document — grounded in evidence, not prose. */
@@ -445,10 +491,28 @@ export class Planner {
         budget: DOCUMENT_NODE_BUDGET,
       },
       requiredCoverage: [],
-      requiredEvidence: [],
+      requiredEvidence: [REQUIRED_EVIDENCE_MIN_OBSERVED],
       status: 'queued',
       attempts: 0,
       budget: DOCUMENT_NODE_BUDGET,
+      outputs: [],
+    }
+  }
+
+  private repositorySurveyNode(): TaskNode {
+    const id = 'node-repository-survey'
+    return {
+      id,
+      title: 'Repository structure survey',
+      objective:
+        'Survey repository structure, manifests, and entry points; cite evidence for every structural claim.',
+      dependencies: [],
+      roleSpec: repositoryWorkerSpec(id),
+      requiredCoverage: ['Repository structure survey'],
+      requiredEvidence: [],
+      status: 'queued',
+      attempts: 0,
+      budget: ANALYSIS_NODE_BUDGET,
       outputs: [],
     }
   }
@@ -483,14 +547,21 @@ export class Planner {
     }
   }
 
-  private dynamicNode(domain: string, title: string, objective: string, questions: string[], coverage: string[]): TaskNode {
+  private dynamicNode(
+    domain: string,
+    title: string,
+    objective: string,
+    questions: string[],
+    coverage: string[],
+    surveyId?: string,
+  ): TaskNode {
     const id = `node-${slug(domain)}-${slug(title)}`
     const roleSpec = workerSpecFor(title, objective, id)
     return {
       id,
       title,
       objective,
-      dependencies: [],
+      dependencies: surveyId ? [surveyId] : [],
       roleSpec: { ...roleSpec, questions: questions.length > 0 ? questions : [objective], requiredCoverage: coverage },
       requiredCoverage: coverage,
       requiredEvidence: [],

@@ -1,7 +1,13 @@
 import { z } from 'zod'
 import type { TaskNode } from '../contracts/TaskGraph'
+import type { EvidenceLedger } from '../knowledge/EvidenceLedger'
 import { FindingStore } from '../knowledge/FindingStore'
 import { ProjectFactBase } from '../knowledge/ProjectFactBase'
+import {
+  buildDocumentKnowledgePack,
+  documentGroundingRules,
+  type KnowledgePromptPack,
+} from '../knowledge/KnowledgePromptBuilder'
 import { runToolLoop, type ToolLoopConfig } from '../model/toolLoopTaskRunner'
 import { extractJsonBlock } from '../model/jsonBlock'
 import type { ModelProvider } from '../model/ModelProvider'
@@ -28,6 +34,7 @@ export interface DocumentWorkerDeps {
   baseConfig: ToolLoopConfig
   findings: FindingStore
   facts: ProjectFactBase
+  evidence: EvidenceLedger
   gateway: DocumentGateway
   /** Durable-state hook (plan §14): every checkpointed IR survives a restart. */
   onCheckpoint?: (documentId: string, ir: DocumentIR) => void
@@ -38,6 +45,10 @@ export interface DocumentWorkerDeps {
 export interface DocumentRunContext {
   taskId?: string
   signal: AbortSignal
+  /** Structured outputs from completed dependency nodes (analysis, survey). */
+  dependencyOutputs?: string[]
+  /** Extra gap messages from readiness evaluation (runTaskGraph). */
+  extraKnowledgeGaps?: string[]
   activity: (activity: string) => void
   documentDeclared: (document: DocumentProgressState) => void
   documentProgress: (document: DocumentProgressState) => void
@@ -84,24 +95,20 @@ const BLOCK_SCHEMA_HINT =
   '\n\nRespond with ONLY JSON: {"parts":[...]}.\n' +
   'Each part is EXACTLY one of:\n' +
   '- Markdown prose: {"md":"<CommonMark/GFM string>"}\n' +
-  '  Use real Markdown for paragraphs, lists (-/*/1.), GFM tables, `inline code`,\n' +
+  '  Use real Markdown for paragraphs, lists (-/*/1.), GFM tables, blockquotes (>), `inline code`,\n' +
   '  fenced code, and **bold** / *italic* / [links](url).\n' +
   '  Do NOT invent {"type":"paragraph"} or {"type":"bullets"} or {"type":"table"}.\n' +
   '  Do not include a section title (the heading is already known). Use ### for subsections only.\n' +
   '- Custom widgets (typed JSON only — Markdown cannot express these):\n' +
-  '  - callout: {"type":"callout","text":"...","variant":"info|warn|success|error","title":"..."}\n' +
   '  - mermaid: {"type":"mermaid","diagram":"flowchart TD\\n  A --> B","title":"..."}\n' +
-  '  - risk: {"type":"risk","rows":[{"risk":"...","likelihood":"H|M|L","impact":"H|M|L","mitigation":"..."}]}\n' +
-  '  - scope: {"type":"scope","inScope":["..."],"outOfScope":["..."]}\n' +
-  '  - kpiGrid: {"type":"kpiGrid","items":[{"metric":"...","target":"...","method":"..."}]}\n' +
-  '  - stakeholderTable: {"type":"stakeholderTable","rows":[{"nameRole":"...","interest":"H|M|L","influence":"H|M|L","concern":"..."}]}\n' +
+  '  - Prefer Markdown GFM tables for KPIs, risks, stakeholders, and scope lists.\n' +
+  '  - Prefer > blockquotes for caveats / "not established" notes.\n' +
   'Rules: a mermaid "diagram" must be a single-line string using \\n escapes (never raw newlines). ' +
   'Start it with a supported diagram type: flowchart (or graph TD/LR), sequenceDiagram, classDiagram, ' +
   'stateDiagram-v2, erDiagram, gantt, pie, journey, mindmap, timeline, quadrantChart, or gitGraph. ' +
   'Quote any node/edge label containing { } < > | # ; or /. ' +
-  'Prefer Markdown for ordinary prose/lists/tables. Use widgets only when the structure fits: ' +
-  'a callout for caveats, a risk block for risks, a kpiGrid for measurable goals, ' +
-  'a stakeholderTable for roles, and a mermaid block for architecture or flow diagrams.'
+  'Prefer Markdown for ordinary prose/lists/tables. Use mermaid only for architecture or flow diagrams.'
+
 
 type SectionParseOutcome = 'valid' | 'empty' | 'markdown' | 'malformed_json' | 'schema_mismatch'
 
@@ -254,17 +261,6 @@ function sectionTextsPayload(documentId: string, title: string, sections: Docume
   })
 }
 
-function factsSummary(findings: FindingStore, facts: ProjectFactBase): string {
-  const lines: string[] = []
-  for (const f of facts.all().slice(0, 30)) {
-    lines.push(`- FACT ${f.domain}: ${f.statement}`)
-  }
-  for (const f of findings.all().slice(0, 40)) {
-    lines.push(`- FINDING [${f.type}] (${f.domain}): ${f.claim}`)
-  }
-  return lines.join('\n') || '- (no established facts yet)'
-}
-
 async function modelJson(
   provider: ModelProvider,
   config: ToolLoopConfig,
@@ -282,7 +278,7 @@ async function modelJson(
       ...config,
       system: jsonMode
         ? `${system}\nUse this exact JSON shape: {"parts":[{"md":"Example prose with a list:\\n\\n- Item one\\n- Item two"}]}. ` +
-          `Prefer {"md":"..."} for prose; use typed widget objects only for callout/mermaid/risk/scope/kpiGrid/stakeholderTable.`
+          `Prefer {"md":"..."} for prose and GFM tables; use typed {"type":"mermaid",...} only for diagrams.`
         : system,
       tools: [],
       responseFormat: jsonMode ? 'json_object' : undefined,
@@ -306,6 +302,26 @@ export class DocumentWorker {
 
   constructor(private readonly deps: DocumentWorkerDeps) {
     this.mermaidValidator = deps.mermaidValidator ?? createMermaidValidator()
+  }
+
+  private knowledgePack(
+    ctx: DocumentRunContext,
+    documentTitle: string,
+    sectionHeading?: string,
+  ): KnowledgePromptPack {
+    return buildDocumentKnowledgePack({
+      facts: this.deps.facts.all(),
+      findings: this.deps.findings.all(),
+      evidence: this.deps.evidence.all(),
+      dependencyOutputs: ctx.dependencyOutputs ?? [],
+      extraGaps: ctx.extraKnowledgeGaps,
+      documentTitle,
+      sectionHeading,
+    })
+  }
+
+  private knowledgePromptBlock(pack: KnowledgePromptPack): string {
+    return `${documentGroundingRules(pack)}\n\nREPOSITORY KNOWLEDGE:\n${pack.text}`
   }
 
   async run(node: TaskNode, ctx: DocumentRunContext): Promise<DocumentRunResult> {
@@ -365,11 +381,12 @@ export class DocumentWorker {
     ctx.documentProgress({ ...declared, status: 'outlining' })
     let headings: string[]
     try {
+      const pack = this.knowledgePack(ctx, title)
       headings = await this.outlineHeadings(
         config,
         `Outline the "${title}" document for this repository. Respond with ONLY a JSON block: ` +
           '{"sections":[{"heading":"..."}]}. Use 4-10 focused sections relevant to the repository.\n\n' +
-          `Established facts your outline must respect:\n${factsSummary(this.deps.findings, this.deps.facts)}`,
+          this.knowledgePromptBlock(pack),
         ctx,
       )
     } catch (error) {
@@ -440,13 +457,14 @@ export class DocumentWorker {
     })
     const existingHeadings = ir.sections.map((s) => s.heading)
     const seen = new Set(existingHeadings.map((h) => h.trim().toLowerCase()))
+    const pack = this.knowledgePack(ctx, title)
     const remaining = (await this.outlineHeadings(
       ctx.loopConfig ?? this.deps.baseConfig,
       `Outline the REMAINING sections to complete the "${title}" document. ` +
         `These sections already exist: ${existingHeadings.join(', ')}. ` +
         `Respond with ONLY a JSON block: {"sections":[{"heading":"..."}]} — ` +
         `give 2-6 NEW headings (no duplicates), max ${MAX_SECTIONS - existingCount}.\n\n` +
-        `Established facts your outline must respect:\n${factsSummary(this.deps.findings, this.deps.facts)}`,
+        this.knowledgePromptBlock(pack),
       ctx,
     )).filter((h) => !seen.has(h.trim().toLowerCase()))
     const headings = [...existingHeadings, ...remaining].slice(0, MAX_SECTIONS)
@@ -514,13 +532,13 @@ export class DocumentWorker {
         activeSection: heading,
       })
 
+      const pack = this.knowledgePack(ctx, title, heading)
       const sectionText = await modelJson(
         this.deps.provider,
         config,
         `Write section "${heading}" (${i + 1}/${total}) of the "${title}" document. ` +
-          `Ground every factual statement in the established facts; clearly flag anything proposed. ` +
           `Respond with ONLY a JSON object: {"parts":[...]}.${BLOCK_SCHEMA_HINT}\n\n` +
-          `Established facts (your section MUST agree with these):\n${factsSummary(this.deps.findings, this.deps.facts)}`,
+          this.knowledgePromptBlock(pack),
         `You write technical documentation sections. Output ONLY valid JSON.`,
         ctx.signal,
         ctx.activity,
@@ -658,14 +676,14 @@ export class DocumentWorker {
         activeSection: section.heading,
       })
 
+      const pack = this.knowledgePack(ctx, title, section.heading)
       const sectionText = await modelJson(
         this.deps.provider,
         ctx.loopConfig ?? this.deps.baseConfig,
         `Rewrite ONLY the section "${section.heading}" of the "${title}" document. ` +
           `Validation feedback you must address: ${node.objective}\n` +
-          `Ground every factual statement in the established facts; keep claims that were validated as supported. ` +
           `Respond with ONLY a JSON object: {"parts":[...]}.${BLOCK_SCHEMA_HINT}\n\n` +
-          `Established facts (your section MUST agree with these):\n${factsSummary(this.deps.findings, this.deps.facts)}`,
+          this.knowledgePromptBlock(pack),
         `You fix technical documentation sections. Output ONLY valid JSON.`,
         ctx.signal,
         ctx.activity,

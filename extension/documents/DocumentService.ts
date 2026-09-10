@@ -8,6 +8,7 @@ import {
   saveForm,
 } from '../formStateManager'
 import { STATE_DIR } from '../brand'
+import { canvasHasContent } from './canvasContent'
 import { renderDocument, type RenderedCanvasDocument } from './DocumentRenderer'
 import { documentIrSchema, type DocumentIR } from './DocumentIR'
 import type { CheckpointResult, CreatedDocType } from '../agent/workers/DocumentGateway'
@@ -362,6 +363,36 @@ export class DocumentService {
       blocks: d.blocks as Array<Record<string, unknown>>,
       anchors: (d.anchors && typeof d.anchors === 'object' ? d.anchors : {}) as Record<string, unknown>,
     }
+  }
+
+  /**
+   * Load the canvas for display. When the on-disk file is still empty but agent
+   * checkpoints were parked as drafts (revision conflict), promote the latest
+   * draft so the editor is not blank.
+   */
+  async loadDocumentForCanvas(documentId: string): Promise<{
+    canvas: RenderedCanvasDocument | null
+    revision: number
+    recoveredFromDraft?: boolean
+  }> {
+    await this.ready()
+    const revision = this.revisionOf(documentId)
+    const disk = await this.loadDocument(documentId)
+    if (disk && canvasHasContent(disk)) {
+      return { canvas: disk, revision }
+    }
+
+    const drafts = this.pendingDraftsFor(documentId)
+    if (drafts.length === 0) {
+      return { canvas: disk, revision }
+    }
+
+    const latest = drafts.reduce((best, draft) => (draft.createdAt > best.createdAt ? draft : best))
+    const applied = await this.applyPendingDraft(documentId, latest.id)
+    if (applied.ok && applied.canvas) {
+      return { canvas: applied.canvas, revision: applied.revision, recoveredFromDraft: true }
+    }
+    return { canvas: latest.canvas, revision, recoveredFromDraft: true }
   }
 
   /**

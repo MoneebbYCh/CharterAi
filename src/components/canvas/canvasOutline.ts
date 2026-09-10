@@ -27,14 +27,7 @@ function propsOf(block: BlockNoteBlock): Record<string, unknown> {
     : {}
 }
 
-const SHAPE_TYPES = new Set([
-  'callout',
-  'kpiGrid',
-  'scopeBounds',
-  'stakeholderTable',
-  'riskList',
-  'diagram',
-])
+const SHAPE_TYPES = new Set(['diagram', 'table'])
 
 /** Build a navigable outline from BlockNote document blocks. */
 export function buildCanvasOutline(blocks: BlockNoteBlock[]): OutlineEntry[] {
@@ -59,13 +52,7 @@ export function buildCanvasOutline(blocks: BlockNoteBlock[]): OutlineEntry[] {
     }
 
     if (SHAPE_TYPES.has(type)) {
-      let label = type
-      if (type === 'callout') label = String(props.title || 'Callout')
-      else if (type === 'kpiGrid') label = 'Objectives / KPIs'
-      else if (type === 'scopeBounds') label = 'Scope bounds'
-      else if (type === 'stakeholderTable') label = 'Stakeholders'
-      else if (type === 'riskList') label = 'Risks'
-      else if (type === 'diagram') label = String(props.title || 'Diagram')
+      let label = type === 'table' ? 'Table' : String(props.title || 'Diagram')
       out.push({ id, type, kind: 'shape', label })
       continue
     }
@@ -96,18 +83,10 @@ export function outlineTypeBadge(type: string): string {
   switch (type) {
     case 'heading':
       return 'H'
-    case 'callout':
-      return 'NOTE'
-    case 'kpiGrid':
-      return 'KPI'
-    case 'scopeBounds':
-      return 'SCOPE'
-    case 'stakeholderTable':
-      return 'PPL'
-    case 'riskList':
-      return 'RISK'
     case 'diagram':
       return 'DIAG'
+    case 'table':
+      return 'TBL'
     case 'bulletListItem':
       return '•'
     case 'numberedListItem':

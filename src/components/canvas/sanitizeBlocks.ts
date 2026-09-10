@@ -1,13 +1,15 @@
 import type { PartialBlock } from '@blocknote/core'
 import type { BlockNoteBlock } from '../../types/document'
 
-const CUSTOM_TYPES = new Set([
+const CUSTOM_TYPES = new Set(['diagram'])
+
+/** Legacy custom shapes removed from the schema — convert on load. */
+const LEGACY_SHAPE_TYPES = new Set([
   'callout',
   'kpiGrid',
   'scopeBounds',
   'stakeholderTable',
   'riskList',
-  'diagram',
 ])
 
 const BUILTIN_TYPES = new Set([
@@ -102,10 +104,6 @@ function extractMermaidFromBlock(
 }
 
 const NONE_CONTENT_TYPES = new Set([
-  'kpiGrid',
-  'scopeBounds',
-  'stakeholderTable',
-  'riskList',
   'diagram',
   'divider',
   'image',
@@ -113,6 +111,115 @@ const NONE_CONTENT_TYPES = new Set([
   'video',
   'audio',
 ])
+
+function parseJsonProp(raw: unknown): unknown {
+  if (Array.isArray(raw)) return raw
+  if (typeof raw !== 'string' || !raw.trim()) return []
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return []
+  }
+}
+
+function legacyTable(
+  header: string[],
+  rows: string[][],
+): PartialBlock {
+  return {
+    type: 'table',
+    content: {
+      type: 'tableContent',
+      rows: [
+        { cells: header },
+        ...rows.map((row) => ({ cells: header.map((_, i) => row[i] ?? '') })),
+      ],
+    },
+  } as PartialBlock
+}
+
+/** Convert removed custom blocks into quote / bullets / native table. */
+function convertLegacyShape(
+  type: string,
+  block: Record<string, unknown>,
+  props: Record<string, unknown>,
+): PartialBlock[] {
+  if (type === 'callout') {
+    const title = typeof props.title === 'string' ? props.title.trim() : ''
+    const body = extractPlainText(block.content)
+    const text = title ? `**${title}:** ${body}` : body || 'Note'
+    return [{ type: 'quote', content: text } as PartialBlock]
+  }
+
+  if (type === 'kpiGrid') {
+    const items = asArray(parseJsonProp(props.itemsJson ?? props.items)) as Record<string, unknown>[]
+    return [
+      legacyTable(
+        ['Metric', 'Target', 'Method'],
+        items.map((i) => [
+          String(i?.metric ?? ''),
+          String(i?.target ?? ''),
+          String(i?.method ?? ''),
+        ]),
+      ),
+    ]
+  }
+
+  if (type === 'stakeholderTable') {
+    const rows = asArray(parseJsonProp(props.rowsJson ?? props.rows)) as Record<string, unknown>[]
+    return [
+      legacyTable(
+        ['Name / Role', 'Interest', 'Influence', 'Concern'],
+        rows.map((r) => [
+          String(r?.nameRole ?? ''),
+          String(r?.interest ?? ''),
+          String(r?.influence ?? ''),
+          String(r?.concern ?? ''),
+        ]),
+      ),
+    ]
+  }
+
+  if (type === 'riskList') {
+    const rows = asArray(parseJsonProp(props.rowsJson ?? props.rows)) as Record<string, unknown>[]
+    return [
+      legacyTable(
+        ['Risk', 'Likelihood', 'Impact', 'Mitigation'],
+        rows.map((r) => [
+          String(r?.risk ?? ''),
+          String(r?.likelihood ?? ''),
+          String(r?.impact ?? ''),
+          String(r?.mitigation ?? ''),
+        ]),
+      ),
+    ]
+  }
+
+  if (type === 'scopeBounds') {
+    const inScope = asArray(parseJsonProp(props.inScopeJson ?? props.inScope)).map(String)
+    const outOfScope = asArray(parseJsonProp(props.outOfScopeJson ?? props.outOfScope)).map(String)
+    const out: PartialBlock[] = []
+    if (inScope.length) {
+      out.push({ type: 'paragraph', content: '**In scope**' } as PartialBlock)
+      out.push(
+        ...inScope.map(
+          (item) => ({ type: 'bulletListItem', content: item }) as PartialBlock,
+        ),
+      )
+    }
+    if (outOfScope.length) {
+      out.push({ type: 'paragraph', content: '**Out of scope**' } as PartialBlock)
+      out.push(
+        ...outOfScope.map(
+          (item) => ({ type: 'bulletListItem', content: item }) as PartialBlock,
+        ),
+      )
+    }
+    return out.length > 0 ? out : [paragraphFallback('')]
+  }
+
+  return [paragraphFallback(extractPlainText(block.content) || `[Removed block: ${type}]`)]
+}
 
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : []
@@ -292,70 +399,25 @@ export function sanitizeCanvasBlocks(blocks: BlockNoteBlock[]): PartialBlock[] {
       continue
     }
 
+    const props =
+      block.props && typeof block.props === 'object' && !Array.isArray(block.props)
+        ? { ...(block.props as Record<string, unknown>) }
+        : {}
+
+    if (LEGACY_SHAPE_TYPES.has(type)) {
+      out.push(...convertLegacyShape(type, block, props))
+      continue
+    }
+
     if (!ALLOWED_TYPES.has(type)) {
       const text = extractPlainText(block.content) || `[Unsupported block: ${type}]`
       out.push(paragraphFallback(text))
       continue
     }
 
-    const props =
-      block.props && typeof block.props === 'object' && !Array.isArray(block.props)
-        ? { ...(block.props as Record<string, unknown>) }
-        : {}
-
     if (type === 'heading') {
       const level = Number(props.level)
       props.level = Number.isFinite(level) && level >= 1 && level <= 6 ? Math.trunc(level) : 1
-    }
-
-    if (type === 'callout') {
-      if (props.title == null) props.title = ''
-      if (props.anchorId == null) props.anchorId = ''
-      const allowed = new Set(['info', 'warn', 'success', 'error'])
-      if (!allowed.has(String(props.variant ?? ''))) props.variant = 'info'
-    }
-
-    if (type === 'kpiGrid') {
-      if (Array.isArray(props.items)) {
-        props.itemsJson = JSON.stringify(props.items)
-        delete props.items
-      } else if (typeof props.itemsJson !== 'string') {
-        props.itemsJson = '[]'
-      }
-      if (props.anchorId == null) props.anchorId = ''
-    }
-
-    if (type === 'stakeholderTable') {
-      if (Array.isArray(props.rows)) {
-        props.rowsJson = JSON.stringify(props.rows)
-        delete props.rows
-      } else if (typeof props.rowsJson !== 'string') {
-        props.rowsJson = '[]'
-      }
-    }
-
-    if (type === 'riskList') {
-      if (Array.isArray(props.rows)) {
-        props.rowsJson = JSON.stringify(props.rows)
-        delete props.rows
-      } else if (typeof props.rowsJson !== 'string') {
-        props.rowsJson = '[]'
-      }
-    }
-
-    if (type === 'scopeBounds') {
-      if (Array.isArray(props.inScope)) {
-        props.inScopeJson = JSON.stringify(props.inScope)
-        delete props.inScope
-      } else if (typeof props.inScopeJson !== 'string') {
-        props.inScopeJson = '[]'
-      }
-      if (Array.isArray(props.outOfScope)) {
-        props.outOfScopeJson = JSON.stringify(props.outOfScope)
-        delete props.outOfScope
-      } else if (typeof props.outOfScopeJson !== 'string') {
-        props.outOfScopeJson = '[]'
-      }
     }
 
     if (type === 'diagram') {

@@ -54,10 +54,7 @@ export function toCanvasDocument(data: unknown): CanvasDocument {
 export function documentHasContent(doc: CanvasDocument): boolean {
   return doc.blocks.some((block) => {
     const type = String(block.type || '')
-    // Custom prop-only blocks count as content.
-    if (['kpiGrid', 'scopeBounds', 'stakeholderTable', 'riskList', 'callout', 'diagram'].includes(type)) {
-      return true
-    }
+    if (type === 'diagram' || type === 'table') return true
     const content = block.content
     if (typeof content === 'string') return content.trim().length > 0
     if (Array.isArray(content)) {

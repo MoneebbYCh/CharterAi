@@ -57,7 +57,7 @@ interface DocNodePayload {
 
 const MAX_EVIDENCE_CHECKS = 10
 const MAX_SECTION_TEXT = 1_500
-const MAX_FACTS_TEXT = 8_000
+import { buildValidationKnowledgeContext } from '../knowledge/KnowledgePromptBuilder'
 
 const claimListSchema = z.object({
   claims: z
@@ -86,15 +86,12 @@ const contradictionListSchema = z.object({
     .max(40),
 })
 
-function factsContext(facts: ProjectFactBase, findings: FindingStore): string {
-  const lines: string[] = []
-  for (const f of facts.all().slice(0, 30)) {
-    lines.push(`FACT [${f.domain}] ${f.statement}`)
-  }
-  for (const f of findings.all().slice(0, 40)) {
-    lines.push(`FINDING [${f.type}] (${f.domain}): ${f.claim}`)
-  }
-  return lines.join('\n').slice(0, MAX_FACTS_TEXT) || '(no established facts yet)'
+function factsContext(facts: ProjectFactBase, findings: FindingStore, evidence: EvidenceLedger): string {
+  return buildValidationKnowledgeContext({
+    facts: facts.all(),
+    findings: findings.all(),
+    evidence: evidence.all(),
+  })
 }
 
 /**
@@ -349,7 +346,7 @@ export class ValidationWorker {
         text:
           `Validate the repository claims in the document "${title}".\n\n` +
           `DOCUMENT SECTIONS:\n${sectionsText}\n\n` +
-          `KNOWN FACTS AND FINDINGS (evidence ids in brackets are citable):\n${factsContext(this.deps.facts, this.deps.findings)}\n\n` +
+          `KNOWN FACTS AND FINDINGS (evidence ids in brackets are citable):\n${factsContext(this.deps.facts, this.deps.findings, this.deps.evidence)}\n\n` +
           `Rules:\n` +
           `- Extract up to 15 IMPORTANT claims that assert repository/implementation behavior ("current") or future intent ("proposed").\n` +
           `- For each CURRENT claim, judge whether the cited evidence supports it. Use the repository tools to check anything you are unsure about.\n` +
